@@ -1,0 +1,10 @@
+# Personal files created by setup.py and the tracker (they contain your
+# email address, run history and copies of your code), so never commit them.
+config.json
+data/
+dashboard.html
+plan.html
+
+# Python cache
+__pycache__/
+*.pyc

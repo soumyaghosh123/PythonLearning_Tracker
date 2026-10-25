@@ -1,0 +1,199 @@
+{
+  "plans": {
+    "standard": {
+      "label": "Standard",
+      "icon": "📘",
+      "daily_effort": "30–45 min a day",
+      "daily_runs_target": 2,
+      "weekly_lines_target": 150,
+      "streak_target_days": 30,
+      "description": "Steady pace for people learning alongside work or studies."
+    },
+    "aggressive": {
+      "label": "Aggressive",
+      "icon": "🚀",
+      "daily_effort": "1.5–2 hours a day",
+      "daily_runs_target": 5,
+      "weekly_lines_target": 400,
+      "streak_target_days": 30,
+      "description": "Fast track in about half the time. Alerts fire sooner."
+    }
+  },
+  "levels": [
+    {
+      "id": 1,
+      "name": "Python Basics",
+      "tier": "Beginner",
+      "days": {"standard": 7, "aggressive": 3},
+      "project": "Tip calculator: ask for a bill and tip %, then print the total.",
+      "links": [
+        {"title": "Python tutorial: An informal introduction", "url": "https://docs.python.org/3/tutorial/introduction.html"},
+        {"title": "W3Schools: Variables", "url": "https://www.w3schools.com/python/python_variables.asp"}
+      ],
+      "topics": [
+        {"id": "print", "name": "print()", "link": "https://www.w3schools.com/python/python_getstarted.asp", "try": "Print a welcome message with print('Hello')."},
+        {"id": "variables", "name": "variables", "link": "https://www.w3schools.com/python/python_variables.asp", "try": "Store your name in a variable and print it."},
+        {"id": "numbers_strings", "name": "numbers and strings", "link": "https://docs.python.org/3/tutorial/introduction.html", "try": "Use both a number (like 42) and a string (like 'hi') in one program."},
+        {"id": "input", "name": "input()", "link": "https://www.w3schools.com/python/python_user_input.asp", "try": "Ask for the user's name with input() and greet them."},
+        {"id": "operators", "name": "arithmetic and comparison operators", "link": "https://www.w3schools.com/python/python_operators.asp", "try": "Add two numbers, then check which is bigger with >."},
+        {"id": "comments", "name": "comments", "link": "https://www.w3schools.com/python/python_comments.asp", "try": "Explain a line of your code with a # comment."}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Control Flow",
+      "tier": "Beginner",
+      "days": {"standard": 10, "aggressive": 5},
+      "project": "Number guessing game with a limited number of tries.",
+      "links": [
+        {"title": "Python tutorial: Control flow", "url": "https://docs.python.org/3/tutorial/controlflow.html"},
+        {"title": "W3Schools: If…Else", "url": "https://www.w3schools.com/python/python_conditions.asp"}
+      ],
+      "topics": [
+        {"id": "if_else", "name": "if / elif / else", "link": "https://www.w3schools.com/python/python_conditions.asp", "try": "Print 'even' or 'odd' for a number using if / else."},
+        {"id": "for_loop", "name": "for loops", "link": "https://www.w3schools.com/python/python_for_loops.asp", "try": "Loop over a list of names and print each one."},
+        {"id": "while_loop", "name": "while loops", "link": "https://www.w3schools.com/python/python_while_loops.asp", "try": "Count down from 10 with a while loop."},
+        {"id": "range", "name": "range()", "link": "https://www.w3schools.com/python/python_for_loops.asp", "try": "Print the 5 times table with for i in range(1, 11)."},
+        {"id": "break_continue", "name": "break and continue", "link": "https://www.w3schools.com/python/python_while_loops.asp", "try": "Stop a loop early with break when the user types 'quit'."}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Data Structures",
+      "tier": "Beginner",
+      "days": {"standard": 14, "aggressive": 7},
+      "project": "Contact book stored in a dictionary (add, search, delete).",
+      "links": [
+        {"title": "Python tutorial: Data structures", "url": "https://docs.python.org/3/tutorial/datastructures.html"},
+        {"title": "W3Schools: Lists", "url": "https://www.w3schools.com/python/python_lists.asp"}
+      ],
+      "topics": [
+        {"id": "lists", "name": "lists", "link": "https://www.w3schools.com/python/python_lists.asp", "try": "Make a list of 3 fruits and print the second one."},
+        {"id": "tuples", "name": "tuples", "link": "https://www.w3schools.com/python/python_tuples.asp", "try": "Store a point as (x, y) and print both values."},
+        {"id": "dicts", "name": "dictionaries", "link": "https://www.w3schools.com/python/python_dictionaries.asp", "try": "Store a person's name and age in a dict and print them."},
+        {"id": "sets", "name": "sets", "link": "https://www.w3schools.com/python/python_sets.asp", "try": "Remove duplicates from a list with set()."},
+        {"id": "slicing", "name": "slicing", "link": "https://www.w3schools.com/python/python_strings_slicing.asp", "try": "Print the first 3 letters of a word with word[:3]."},
+        {"id": "list_methods", "name": "list methods (append, sort…)", "link": "https://www.w3schools.com/python/python_lists_methods.asp", "try": "Build a list with append() and then sort() it."}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Functions",
+      "tier": "Intermediate",
+      "days": {"standard": 14, "aggressive": 7},
+      "project": "Calculator built from one function per operation.",
+      "links": [
+        {"title": "Python tutorial: Defining functions", "url": "https://docs.python.org/3/tutorial/controlflow.html#defining-functions"},
+        {"title": "Lambda expressions", "url": "https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions"},
+        {"title": "W3Schools: Functions", "url": "https://www.w3schools.com/python/python_functions.asp"}
+      ],
+      "topics": [
+        {"id": "def_function", "name": "def (your own function)", "link": "https://docs.python.org/3/tutorial/controlflow.html#defining-functions", "try": "Write def say_hello(): and call it."},
+        {"id": "parameters", "name": "parameters", "link": "https://www.w3schools.com/python/python_functions.asp", "try": "Write def greet(name): that prints a greeting for any name."},
+        {"id": "return_value", "name": "return", "link": "https://www.w3schools.com/python/python_functions.asp", "try": "Write def add(a, b): return a + b and print the result."},
+        {"id": "default_args", "name": "default arguments", "link": "https://docs.python.org/3/tutorial/controlflow.html#default-argument-values", "try": "Write greet(name, greeting='Hello') and call it with and without the second argument."},
+        {"id": "lambda", "name": "lambda", "link": "https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions", "try": "Sort a list of tuples with sorted(items, key=lambda x: x[1])."},
+        {"id": "scope", "name": "scope (global / nonlocal)", "link": "https://www.w3schools.com/python/python_scope.asp", "try": "Change a counter inside a function using the global keyword."}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Files & Errors",
+      "tier": "Intermediate",
+      "days": {"standard": 10, "aggressive": 5},
+      "project": "To-do list that saves to a JSON file and handles bad input.",
+      "links": [
+        {"title": "Reading and writing files", "url": "https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files"},
+        {"title": "Errors and exceptions", "url": "https://docs.python.org/3/tutorial/errors.html"},
+        {"title": "W3Schools: Try…Except", "url": "https://www.w3schools.com/python/python_try_except.asp"}
+      ],
+      "topics": [
+        {"id": "with_open", "name": "open() with 'with'", "link": "https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files", "try": "Open a file using with open('notes.txt', 'w') as f:."},
+        {"id": "read_file", "name": "reading files", "link": "https://www.w3schools.com/python/python_file_open.asp", "try": "Read a text file with f.read() and print it."},
+        {"id": "write_file", "name": "writing files", "link": "https://www.w3schools.com/python/python_file_write.asp", "try": "Write three lines to a file with f.write()."},
+        {"id": "try_except", "name": "try / except", "link": "https://docs.python.org/3/tutorial/errors.html#handling-exceptions", "try": "Wrap int(input()) in try / except ValueError."},
+        {"id": "raise_error", "name": "raise", "link": "https://docs.python.org/3/tutorial/errors.html#raising-exceptions", "try": "raise ValueError when someone enters a negative age."},
+        {"id": "json_module", "name": "json", "link": "https://www.w3schools.com/python/python_json.asp", "try": "Save a dict to a file with json.dump() and load it back."}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Modules & Packages",
+      "tier": "Intermediate",
+      "days": {"standard": 7, "aggressive": 4},
+      "project": "Split the to-do app into two modules and add dates with datetime.",
+      "links": [
+        {"title": "Python tutorial: Modules", "url": "https://docs.python.org/3/tutorial/modules.html"},
+        {"title": "Standard library tour", "url": "https://docs.python.org/3/tutorial/stdlib.html"},
+        {"title": "Virtual environments and pip", "url": "https://docs.python.org/3/tutorial/venv.html"}
+      ],
+      "topics": [
+        {"id": "import_module", "name": "import", "link": "https://docs.python.org/3/tutorial/modules.html", "try": "import math and print math.sqrt(16)."},
+        {"id": "from_import", "name": "from … import", "link": "https://docs.python.org/3/tutorial/modules.html", "try": "from random import randint and roll a dice."},
+        {"id": "stdlib", "name": "standard library (math, random, datetime…)", "link": "https://docs.python.org/3/tutorial/stdlib.html", "try": "Print today's date using the datetime module."},
+        {"id": "own_module", "name": "importing your own module", "link": "https://docs.python.org/3/tutorial/modules.html", "try": "Put a function in helpers.py and import it from main.py (same folder)."},
+        {"id": "third_party", "name": "a package installed with pip", "link": "https://www.w3schools.com/python/python_pip.asp", "try": "Run pip install requests (or colorama), then import it."}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Object-Oriented Programming",
+      "tier": "Advanced",
+      "days": {"standard": 21, "aggressive": 10},
+      "project": "Bank account system: Account, SavingsAccount and transactions.",
+      "links": [
+        {"title": "Python tutorial: Classes", "url": "https://docs.python.org/3/tutorial/classes.html"},
+        {"title": "Inheritance", "url": "https://docs.python.org/3/tutorial/classes.html#inheritance"},
+        {"title": "W3Schools: Classes", "url": "https://www.w3schools.com/python/python_classes.asp"}
+      ],
+      "topics": [
+        {"id": "class_def", "name": "class", "link": "https://www.w3schools.com/python/python_classes.asp", "try": "Create a class Dog and make an object from it."},
+        {"id": "init_self", "name": "__init__ and self", "link": "https://www.w3schools.com/python/python_classes.asp", "try": "Give Dog an __init__(self, name) that stores the name."},
+        {"id": "methods", "name": "methods", "link": "https://docs.python.org/3/tutorial/classes.html", "try": "Add a bark(self) method and call it."},
+        {"id": "inheritance", "name": "inheritance", "link": "https://docs.python.org/3/tutorial/classes.html#inheritance", "try": "Make class Puppy(Dog) and override one method."},
+        {"id": "special_methods", "name": "special methods (__str__, __repr__…)", "link": "https://docs.python.org/3/reference/datamodel.html#special-method-names", "try": "Add __str__ so print(dog) shows a friendly description."},
+        {"id": "class_attributes", "name": "class attributes", "link": "https://docs.python.org/3/tutorial/classes.html", "try": "Add species = 'dog' directly inside the class body."}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Advanced Python",
+      "tier": "Advanced",
+      "days": {"standard": 21, "aggressive": 10},
+      "project": "Log-file analyser using a generator and a timing decorator.",
+      "links": [
+        {"title": "List comprehensions", "url": "https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions"},
+        {"title": "Generators", "url": "https://docs.python.org/3/tutorial/classes.html#generators"},
+        {"title": "Decorators (glossary)", "url": "https://docs.python.org/3/glossary.html#term-decorator"},
+        {"title": "typing module", "url": "https://docs.python.org/3/library/typing.html"}
+      ],
+      "topics": [
+        {"id": "comprehensions", "name": "list / dict comprehensions", "link": "https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions", "try": "Build squares = [n * n for n in range(10)]."},
+        {"id": "generators", "name": "generators (yield)", "link": "https://docs.python.org/3/tutorial/classes.html#generators", "try": "Write a function that yields numbers one at a time."},
+        {"id": "decorators", "name": "decorators", "link": "https://docs.python.org/3/glossary.html#term-decorator", "try": "Write a @timer decorator that prints how long a function took."},
+        {"id": "context_managers", "name": "your own context manager", "link": "https://docs.python.org/3/library/contextlib.html", "try": "Write a class with __enter__ / __exit__, or use @contextmanager."},
+        {"id": "type_hints", "name": "type hints", "link": "https://docs.python.org/3/library/typing.html", "try": "Write def add(a: int, b: int) -> int:."},
+        {"id": "args_kwargs", "name": "*args and **kwargs", "link": "https://www.w3schools.com/python/python_args_kwargs.asp", "try": "Write a function total(*numbers) that adds any amount of numbers."}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Testing & Real Projects",
+      "tier": "Advanced",
+      "days": {"standard": 28, "aggressive": 14},
+      "project": "Capstone: a weather or currency app that calls an API, with tests.",
+      "links": [
+        {"title": "unittest", "url": "https://docs.python.org/3/library/unittest.html"},
+        {"title": "argparse tutorial", "url": "https://docs.python.org/3/howto/argparse.html"},
+        {"title": "Requests library", "url": "https://requests.readthedocs.io/en/latest/"}
+      ],
+      "topics": [
+        {"id": "unittest", "name": "unit tests (unittest / pytest)", "link": "https://docs.python.org/3/library/unittest.html", "try": "Write a unittest.TestCase that checks your add() function."},
+        {"id": "assert_stmt", "name": "assert", "link": "https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement", "try": "Add assert add(2, 3) == 5 to a script."},
+        {"id": "apis", "name": "calling a web API (requests / urllib)", "link": "https://requests.readthedocs.io/en/latest/", "try": "Fetch a JSON API with requests.get() and print one field."},
+        {"id": "main_guard", "name": "if __name__ == '__main__'", "link": "https://docs.python.org/3/library/__main__.html", "try": "Put your program's start code under if __name__ == '__main__':."},
+        {"id": "cli_args", "name": "command-line arguments (argparse / sys.argv)", "link": "https://docs.python.org/3/howto/argparse.html", "try": "Accept a file name from the command line with argparse."}
+      ]
+    }
+  ]
+}
