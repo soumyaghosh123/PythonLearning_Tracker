@@ -113,6 +113,18 @@ class PackTests(unittest.TestCase):
         self.assertIn("node not found", msg)
         add.assert_not_called()
 
+    @unittest.skipUnless(NODE, "node not installed")
+    def test_broken_token_fails_self_test_and_install_skips_env(self):
+        pack = get_pack("javascript")
+        broken = '--require "' + str(jspack.HOOK_PATH) + '"'   # backslashes inside quotes
+        self.assertIn("\\", broken)
+        with mock.patch.object(jspack, "HOOK_TOKEN", broken):
+            ok, _ = pack.self_test({"code_folder": "C:/x"})
+            self.assertFalse(ok)
+            with mock.patch.object(jspack.envvars, "user_env_add") as add,                     mock.patch.object(jspack.envvars, "user_env_remove"),                     self.hook_json():
+                self.assertFalse(pack.install({"code_folder": "C:/x"}, Path("D"))[0])
+                add.assert_not_called()
+
     def test_uninstall_removes_token(self):
         with mock.patch.object(jspack.envvars, "user_env_remove", return_value=True) as rem:
             get_pack("javascript").uninstall()
@@ -208,13 +220,41 @@ class NodeHookTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(self.runs()), 1)
 
-    def test_self_test_passes_and_restores_hook_json(self):
-        # The hook reads hook.json beside itself, so this uses the real file and must leave it as found.
-        before = jspack.HOOK_JSON.read_bytes() if jspack.HOOK_JSON.exists() else None
+    def test_self_test_passes_with_real_token(self):
         ok, msg = get_pack("javascript").self_test({"code_folder": str(self.code)})
-        after = jspack.HOOK_JSON.read_bytes() if jspack.HOOK_JSON.exists() else None
         self.assertTrue(ok, msg)
-        self.assertEqual(before, after)
+
+    def test_self_test_never_touches_hook_json(self):
+        # Temp copy of the pack dir; its hook.json must stay as found (or absent).
+        copy = self.tmp / "pack copy"
+        copy.mkdir()
+        shutil.copy(jspack.HOOK_PATH, copy / "node_hook.js")
+        hook = copy / "node_hook.js"
+        token = '--require "' + fwd(hook) + '"'
+        pack = get_pack("javascript")
+        with mock.patch.object(jspack, "HOOK_PATH", hook), mock.patch.object(jspack, "HOOK_TOKEN", token),                 mock.patch.object(jspack, "HOOK_JSON", self.tmp / "no_such_dir" / "hook.json"):
+            ok, msg = pack.self_test({"code_folder": str(self.code)})
+            self.assertTrue(ok, msg)
+            self.assertFalse((copy / "hook.json").exists())
+            (copy / "hook.json").write_bytes(b'{"keep": 1}')
+            self.assertTrue(pack.self_test({"code_folder": str(self.code)})[0])
+            self.assertEqual((copy / "hook.json").read_bytes(), b'{"keep": 1}')
+
+    def test_sigint_without_handler_is_stopped(self):
+        (self.code / "s.js").write_text(
+            'setInterval(() => {}, 1000); setTimeout(() => process.emit("SIGINT"), 50);', encoding="utf-8")
+        result = self.run_node(self.code / "s.js")
+        self.assertEqual(result.returncode, 130)
+        self.assertEqual([r["status"] for r in self.runs()], ["stopped"])
+
+    def test_sigint_with_learner_handler_is_not_forced(self):
+        (self.code / "g.js").write_text(
+            'process.on("SIGINT", () => { console.log("graceful"); process.exit(0); });'
+            'setInterval(() => {}, 1000); setTimeout(() => process.emit("SIGINT"), 50);', encoding="utf-8")
+        result = self.run_node(self.code / "g.js")
+        self.assertIn("graceful", result.stdout)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(len(self.runs()), 1)
 
 
 if __name__ == "__main__":

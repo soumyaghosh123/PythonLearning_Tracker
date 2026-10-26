@@ -53,31 +53,27 @@ class JavaScriptPack(LanguagePack):
         node = shutil.which("node")
         if not node:
             return False, "node not found"
-        previous = HOOK_JSON.read_bytes() if HOOK_JSON.exists() else None
         try:
             with tempfile.TemporaryDirectory(prefix="jstracker_selftest_") as tmp:
                 code, data = Path(tmp) / "code", Path(tmp) / "data"
                 code.mkdir()
                 script = code / "selftest.js"
                 script.write_text("console.log('ok')\n", encoding="utf-8")
-                _write_hook_json({"code_folder": str(code)}, data)
-                env = {k: v for k, v in os.environ.items() if k != "NODE_OPTIONS"}
-                result = subprocess.run([node, "--require", str(HOOK_PATH), str(script)],
-                                        capture_output=True, text=True, timeout=30, env=env)
-                if result.returncode != 0:
-                    return False, f"node exited with code {result.returncode}"
-                runs = (data / "javascript" / "runs.jsonl")
+                settings_file = Path(tmp) / "hook.json"
+                _write_hook_json({"code_folder": str(code)}, data, settings_file)
+                # Exactly what install will add to NODE_OPTIONS, so a token Node can't parse fails here.
+                env = dict(os.environ, NODE_OPTIONS=HOOK_TOKEN, JSTRACKER_HOOK_JSON=str(settings_file))
+                result = subprocess.run([node, str(script)], capture_output=True, text=True,
+                                        timeout=30, env=env)
+                if result.returncode != 0 or result.stderr.strip():
+                    return False, (result.stderr.strip().splitlines() or [f"node exited with code {result.returncode}"])[0]
+                runs = data / "javascript" / "runs.jsonl"
                 lines = runs.read_text(encoding="utf-8").splitlines() if runs.exists() else []
                 if len(lines) == 1 and json.loads(lines[0]).get("status") == "success":
                     return True, "Node hook works"
                 return False, "the hook did not log the test run"
         except Exception as e:
             return False, f"self-test failed: {e}"
-        finally:
-            if previous is None:
-                HOOK_JSON.unlink(missing_ok=True)
-            else:
-                HOOK_JSON.write_bytes(previous)
 
     def hook_installed(self):
         value = envvars.get_user_env("NODE_OPTIONS")
@@ -90,8 +86,8 @@ class JavaScriptPack(LanguagePack):
         return collect_saved(lang_config, data_dir, runs, hook_on=self.hook_installed())
 
 
-def _write_hook_json(lang_config, data_dir):
-    HOOK_JSON.write_text(json.dumps({
+def _write_hook_json(lang_config, data_dir, path=None):
+    (path or HOOK_JSON).write_text(json.dumps({
         "data_dir": str(data_dir),
         "code_folder": lang_config["code_folder"],
         "tracker_dir": str(settings.TRACKER_DIR),

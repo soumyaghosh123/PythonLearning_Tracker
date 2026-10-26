@@ -11,7 +11,7 @@ try {
   const path = require("path");
   const crypto = require("crypto");
 
-  const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, "hook.json"), "utf8"));
+  const cfg = JSON.parse(fs.readFileSync(process.env.JSTRACKER_HOOK_JSON || path.join(__dirname, "hook.json"), "utf8"));
   const script = path.resolve(process.argv[1]);
   const ext = path.extname(script).toLowerCase();
   const low = script.toLowerCase();
@@ -51,7 +51,11 @@ try {
     };
 
     process.on("uncaughtExceptionMonitor", (e) => { error = (e && e.name) || "Error"; });
-    process.once("SIGINT", () => { stopped = true; process.exit(130); });
+    process.once("SIGINT", () => {
+      stopped = true;
+      // Exit ourselves only when no learner handler is waiting to shut down gracefully.
+      if (process.listenerCount("SIGINT") === 0) process.exit(130);
+    });
     process.on("exit", (code) => write(code));
   }
 } catch (e) { /* hook.json missing/unreadable or anything else: stay silent */ }
