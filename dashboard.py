@@ -183,7 +183,7 @@ function renderLanguage(R, el) {
     <div class="card"><h2>📊 Daily runs (last 14 days)</h2><div class="chart-box"><canvas id="${k}-runsChart"></canvas></div></div>
   </section>
   <section class="grid two">
-    <div class="card"><h2>🐞 Most common errors (last 30 days)</h2><div id="${k}-errors"></div></div>
+    <div class="card"><h2>🐞 Most common errors (last 30 days)</h2><div class="table-wrap" id="${k}-errors"></div></div>
     <div class="card"><h2>📂 Recent runs</h2><div class="table-wrap" id="${k}-recent"></div></div>
   </section>
   ${k === 'java' ? `<section class="card mb"><h2>📁 Java sources found in</h2><div class="table-wrap" id="${k}-folders"></div>

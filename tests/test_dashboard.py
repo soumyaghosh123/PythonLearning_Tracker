@@ -55,6 +55,10 @@ class DashboardTests(unittest.TestCase):
         data, _ = embedded(path, "R")
         self.assertEqual(data["languages"]["python"]["errors"][0]["error"], "</script><b>")
 
+    def test_errors_container_scrolls_inside_card(self):
+        html = self.dashboard.write_dashboard(self.report(), self.home / "d.html").read_text(encoding="utf-8")
+        self.assertIn('<div class="table-wrap" id="${k}-errors">', html)
+
 
 if __name__ == "__main__":
     unittest.main()
