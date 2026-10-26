@@ -49,7 +49,7 @@ class ParseChoiceTests(unittest.TestCase):
 
 
 class SetupFlowTests(unittest.TestCase):
-    def run_setup(self, answers, packs, config=None):
+    def run_setup(self, answers, packs, config=None, scheduled=True):
         home = fresh_home()
         if config is not None:
             (home / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -66,7 +66,7 @@ class SetupFlowTests(unittest.TestCase):
              mock.patch.object(setup, "all_packs", lambda: packs), \
              mock.patch.object(setup, "get_pack", lambda k: by_key[k]), \
              mock.patch("languages.all_packs", lambda: packs), \
-             mock.patch.object(setup, "schedule_task") as schedule, \
+             mock.patch.object(setup, "schedule_task", return_value=scheduled) as schedule, \
              mock.patch.object(setup, "powershell") as ps, \
              mock.patch.object(setup, "store_password"), \
              mock.patch.object(setup, "remove_password"), \
@@ -101,6 +101,39 @@ class SetupFlowTests(unittest.TestCase):
         self.assertIn("1) 🐍 Python (VS Code)", out)
         self.assertIn("✅ All set! 🐍 Python (Aggressive) from 25 Oct · ☕ Java (Standard) from 1 Nov", out)
         self.assertIn("Restart Eclipse and VS Code", out)       # the javascript hook was removed: env changed
+        self.assertIn("python tracker\\track.py", out)           # a backslash, not a TAB
+        self.assertNotIn("\t", out)
+
+    def test_old_task_kept_when_scheduling_fails(self):
+        code = tempfile.mkdtemp(prefix="setup_code_")
+        packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]
+        answers = ["Sam", "sam@example.com", "1", "2026-10-25", "", code, "", "", "n"]
+        _, out, _, ps = self.run_setup(answers, packs, scheduled=False)
+        self.assertFalse(any("PythonLearningTracker" in c.args[0] for c in ps.call_args_list))
+        self.assertIn("old task", out)
+
+    def missing_java_config(self):
+        missing = Path(tempfile.mkdtemp(prefix="setup_java_")) / "eclipse-workspace"
+        config = {"learner_name": "Sam", "email": {"to": ["sam@example.com"]},
+                  "languages": {"java": {"code_folder": str(missing)}}}
+        return missing, config
+
+    def test_missing_java_folder_is_created_not_a_loop(self):
+        missing, config = self.missing_java_config()
+        packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]
+        # name, email, languages, java(date, plan, folder), create folder, days, time, no email
+        answers = ["", "", "2", "", "", "", "", "", "", "n"]
+        self.run_setup(answers, packs, config=config)
+        self.assertTrue(missing.is_dir())
+        self.assertEqual(packs[1].calls, [("install", str(missing.resolve()), setup.DATA_DIR)])
+
+    def test_missing_java_folder_kept_when_not_created(self):
+        missing, config = self.missing_java_config()
+        packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]
+        answers = ["", "", "2", "", "", "", "n", "", "", "n"]
+        self.run_setup(answers, packs, config=config)
+        self.assertFalse(missing.exists())
+        self.assertEqual(packs[1].calls[0][1], str(missing.resolve()))
 
     def test_no_restart_message_when_environment_unchanged(self):
         code = tempfile.mkdtemp(prefix="setup_code_")

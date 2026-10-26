@@ -171,12 +171,20 @@ def ask_language(pack, block):
         return keys[int(text) - 1]
     block["plan"] = ask("Plan", default_plan, check_plan)
 
+    java = pack.key == "java"      # Java is tracked anywhere, so a missing workspace is not an error
+
     def check_folder(text):
-        if not Path(text).is_dir():
+        if not java and not Path(text).is_dir():
             raise ValueError("That folder doesn't exist.")
         return str(Path(text).resolve())
-    prompt = "Code folder (your Eclipse workspace)" if pack.key == "java" else "Code folder"
+    prompt = "Code folder (your Eclipse workspace)" if java else "Code folder"
     block["code_folder"] = ask(prompt, block["code_folder"], check_folder)
+    folder = Path(block["code_folder"])
+    if java and not folder.is_dir() and yes("That folder doesn't exist yet. Create it now?", default=True):
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            print(f"  ✗ Could not create it: {error}")
 
 
 def setup():
@@ -245,8 +253,10 @@ def setup():
                 print(f"  ✓ {pack.icon} {pack.uninstall()} (your data is kept)")
         except Exception as error:
             print(f"  ✗ {pack.icon} {pack.label}: {error}")
-    schedule_task(email["send_time"])
-    powershell(f"Unregister-ScheduledTask -TaskName '{OLD_TASK_NAME}' -Confirm:$false")   # old name; may not exist
+    if schedule_task(email["send_time"]):
+        powershell(f"Unregister-ScheduledTask -TaskName '{OLD_TASK_NAME}' -Confirm:$false")   # old name; may not exist
+    else:
+        print(f"  - Kept the old task '{OLD_TASK_NAME}' so you still get your daily refresh.")
     if any(get_pack(k).hook_installed() != env_before[k] for k in HOOK_ENV_PACKS):
         print("  ↻ Restart Eclipse and VS Code once so they pick up the tracker.")
 
@@ -271,7 +281,7 @@ def setup():
         f"from {short_date(config['languages'][p.key]['start_date'])}" for p in packs if p.key in chosen)
     print(f"\n✅ All set! {summary}")
     print("   Write and run code in your folders as usual; it's tracked automatically.")
-    print("   Refresh the dashboard any time with:  python tracker\track.py\n")
+    print("   Refresh the dashboard any time with:  python tracker\\track.py\n")
     webbrowser.open(plan_path.as_uri())
 
 
