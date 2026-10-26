@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>To-do list</title></head>
+<body>
+  <form id="todo-form">
+    <input id="todo-input" type="text">
+    <button type="submit">Add</button>
+  </form>
+  <ul id="todo-list"></ul>
+  <p id="count">0 items</p>
+  <script>
+    const form = document.querySelector("#todo-form");
+    const input = document.querySelector("#todo-input");
+    const list = document.querySelector("#todo-list");
+    const count = document.getElementById("count");
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const li = document.createElement("li");
+      li.textContent = input.value;
+      list.appendChild(li);
+      count.innerHTML = list.children.length + " items";
+      input.value = "";
+    });
+  </script>
+</body>
+</html>

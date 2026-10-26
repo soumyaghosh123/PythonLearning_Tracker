@@ -1,0 +1,506 @@
+{
+  "language": "javascript",
+  "editor": "VS Code",
+  "extensions": [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".html"
+  ],
+  "plans": {
+    "standard": {
+      "label": "Standard",
+      "icon": "📘",
+      "daily_effort": "30–45 min a day",
+      "daily_runs_target": 2,
+      "weekly_lines_target": 150,
+      "streak_target_days": 30,
+      "description": "Steady pace for people learning alongside work or studies."
+    },
+    "aggressive": {
+      "label": "Aggressive",
+      "icon": "🚀",
+      "daily_effort": "1.5–2 hours a day",
+      "daily_runs_target": 5,
+      "weekly_lines_target": 400,
+      "streak_target_days": 30,
+      "description": "Fast track in about half the time. Alerts fire sooner."
+    }
+  },
+  "levels": [
+    {
+      "id": 1,
+      "name": "JS Basics",
+      "tier": "Beginner",
+      "days": {
+        "standard": 7,
+        "aggressive": 3
+      },
+      "project": "Tip calculator: read a bill and print the tip and total.",
+      "links": [
+        {
+          "title": "MDN: JavaScript basics",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/What_is_JavaScript"
+        },
+        {
+          "title": "javascript.info: Fundamentals",
+          "url": "https://javascript.info/first-steps"
+        }
+      ],
+      "topics": [
+        {
+          "id": "console_log",
+          "name": "console.log",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/API/console/log_static",
+          "try": "Print two lines with console.log."
+        },
+        {
+          "id": "let_const",
+          "name": "let and const",
+          "link": "https://javascript.info/variables",
+          "try": "Declare a const name and a let counter, then change the counter."
+        },
+        {
+          "id": "numbers_strings",
+          "name": "numbers and strings",
+          "link": "https://javascript.info/types",
+          "try": "Store a number and a string, then print the string in upper case."
+        },
+        {
+          "id": "template_literals",
+          "name": "template literals",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals",
+          "try": "Print a sentence with a variable inside a template literal."
+        },
+        {
+          "id": "operators",
+          "name": "operators",
+          "link": "https://javascript.info/operators",
+          "try": "Add, multiply and compare two numbers."
+        },
+        {
+          "id": "comments",
+          "name": "comments",
+          "link": "https://javascript.info/structure#comments",
+          "try": "Explain a line of code with a // comment."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Control Flow",
+      "tier": "Beginner",
+      "days": {
+        "standard": 10,
+        "aggressive": 5
+      },
+      "project": "Guess-the-number game: loop until the player is right.",
+      "links": [
+        {
+          "title": "MDN: Making decisions in your code",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Conditionals"
+        },
+        {
+          "title": "javascript.info: Loops",
+          "url": "https://javascript.info/while-for"
+        }
+      ],
+      "topics": [
+        {
+          "id": "if_else",
+          "name": "if / else",
+          "link": "https://javascript.info/ifelse",
+          "try": "Print pass or fail for a score."
+        },
+        {
+          "id": "switch",
+          "name": "switch",
+          "link": "https://javascript.info/switch",
+          "try": "Print a day name from a number with switch."
+        },
+        {
+          "id": "for_loop",
+          "name": "for loops",
+          "link": "https://javascript.info/while-for#the-for-loop",
+          "try": "Print the numbers 1 to 10 with a for loop."
+        },
+        {
+          "id": "while_loop",
+          "name": "while loops",
+          "link": "https://javascript.info/while-for#the-while-loop",
+          "try": "Count down from 5 with a while loop."
+        },
+        {
+          "id": "strict_ternary",
+          "name": "=== and ternary",
+          "link": "https://javascript.info/ifelse#conditional-operator",
+          "try": "Compare with === and pick a label with a ternary."
+        },
+        {
+          "id": "break_continue",
+          "name": "break and continue",
+          "link": "https://javascript.info/while-for#breaking-the-loop",
+          "try": "Skip one number with continue and stop early with break."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Functions",
+      "tier": "Beginner",
+      "days": {
+        "standard": 12,
+        "aggressive": 6
+      },
+      "project": "Unit converter: a function for each conversion.",
+      "links": [
+        {
+          "title": "MDN: Functions",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Functions"
+        },
+        {
+          "title": "javascript.info: Functions",
+          "url": "https://javascript.info/function-basics"
+        }
+      ],
+      "topics": [
+        {
+          "id": "function_decl",
+          "name": "function declarations",
+          "link": "https://javascript.info/function-basics",
+          "try": "Write a function greet(name) and call it twice."
+        },
+        {
+          "id": "default_params",
+          "name": "default parameters",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Default_parameters",
+          "try": "Give a parameter a default value and call it with and without it."
+        },
+        {
+          "id": "return",
+          "name": "return",
+          "link": "https://javascript.info/function-basics#returning-a-value",
+          "try": "Write a function that returns the sum of two numbers."
+        },
+        {
+          "id": "arrow_functions",
+          "name": "arrow functions",
+          "link": "https://javascript.info/arrow-functions-basics",
+          "try": "Rewrite a small function as an arrow function."
+        },
+        {
+          "id": "scope",
+          "name": "scope and closures",
+          "link": "https://javascript.info/closure",
+          "try": "Write makeCounter() that returns a function remembering its count."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Arrays & Objects",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 14,
+        "aggressive": 7
+      },
+      "project": "Student marks: store students in an array of objects and print the average.",
+      "links": [
+        {
+          "title": "MDN: Arrays",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Arrays"
+        },
+        {
+          "title": "javascript.info: Data types",
+          "url": "https://javascript.info/data-types"
+        }
+      ],
+      "topics": [
+        {
+          "id": "arrays",
+          "name": "arrays",
+          "link": "https://javascript.info/array",
+          "try": "Make an array, push an item and print its length."
+        },
+        {
+          "id": "map_filter_reduce",
+          "name": "map, filter, reduce",
+          "link": "https://javascript.info/array-methods",
+          "try": "Double every number with map, then add them with reduce."
+        },
+        {
+          "id": "objects",
+          "name": "objects",
+          "link": "https://javascript.info/object",
+          "try": "Make an object for a person and print two of its properties."
+        },
+        {
+          "id": "destructuring",
+          "name": "destructuring",
+          "link": "https://javascript.info/destructuring-assignment",
+          "try": "Pull two properties out of an object in one line."
+        },
+        {
+          "id": "spread",
+          "name": "spread ...",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax",
+          "try": "Copy an array and add an item using the spread operator."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "DOM & Events",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 14,
+        "aggressive": 7
+      },
+      "project": "To-do list page: add, tick off and delete items.",
+      "links": [
+        {
+          "title": "MDN: DOM scripting",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/DOM_scripting"
+        },
+        {
+          "title": "javascript.info: Document",
+          "url": "https://javascript.info/document"
+        }
+      ],
+      "topics": [
+        {
+          "id": "query_selector",
+          "name": "querySelector",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/API/Document/querySelector",
+          "try": "Select a heading with document.querySelector."
+        },
+        {
+          "id": "dom_content",
+          "name": "changing text and HTML",
+          "link": "https://javascript.info/dom-nodes",
+          "try": "Change a paragraph's textContent from code."
+        },
+        {
+          "id": "event_listener",
+          "name": "addEventListener",
+          "link": "https://javascript.info/introduction-browser-events",
+          "try": "Run code when a button is clicked."
+        },
+        {
+          "id": "create_element",
+          "name": "creating elements",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/API/Document/createElement",
+          "try": "Create a li element and add it to a list."
+        },
+        {
+          "id": "forms",
+          "name": "forms",
+          "link": "https://javascript.info/forms-controls",
+          "try": "Read an input's value when a form is submitted."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Errors, JSON & Modules",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 10,
+        "aggressive": 5
+      },
+      "project": "Notes saver: keep notes as JSON and split the code into modules.",
+      "links": [
+        {
+          "title": "MDN: JSON",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON"
+        },
+        {
+          "title": "javascript.info: Error handling",
+          "url": "https://javascript.info/error-handling"
+        }
+      ],
+      "topics": [
+        {
+          "id": "try_catch",
+          "name": "try / catch",
+          "link": "https://javascript.info/try-catch",
+          "try": "Catch the error from JSON.parse on bad text."
+        },
+        {
+          "id": "throw",
+          "name": "throw",
+          "link": "https://javascript.info/try-catch#throwing-our-own-errors",
+          "try": "Throw an Error when an input is empty."
+        },
+        {
+          "id": "json",
+          "name": "JSON.parse and stringify",
+          "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+          "try": "Turn an object into JSON text and back."
+        },
+        {
+          "id": "es_modules",
+          "name": "import and export",
+          "link": "https://javascript.info/modules-intro",
+          "try": "Export a function from one file and import it in another."
+        },
+        {
+          "id": "require",
+          "name": "require",
+          "link": "https://nodejs.org/api/modules.html",
+          "try": "Load a local file with require in Node."
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Asynchronous JS",
+      "tier": "Advanced",
+      "days": {
+        "standard": 21,
+        "aggressive": 10
+      },
+      "project": "Weather lookup: fetch data from a public API and show it.",
+      "links": [
+        {
+          "title": "MDN: Using promises",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises"
+        },
+        {
+          "title": "javascript.info: Promises and async",
+          "url": "https://javascript.info/async"
+        }
+      ],
+      "topics": [
+        {
+          "id": "timers_callbacks",
+          "name": "setTimeout and callbacks",
+          "link": "https://javascript.info/settimeout-setinterval",
+          "try": "Print a message after one second with setTimeout."
+        },
+        {
+          "id": "promises",
+          "name": "promises",
+          "link": "https://javascript.info/promise-basics",
+          "try": "Write a function that returns a Promise and use .then."
+        },
+        {
+          "id": "async_await",
+          "name": "async / await",
+          "link": "https://javascript.info/async-await",
+          "try": "Rewrite a .then chain with async and await."
+        },
+        {
+          "id": "fetch",
+          "name": "fetch",
+          "link": "https://javascript.info/fetch",
+          "try": "Fetch JSON from a public API and print one field."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Classes & Modern JS",
+      "tier": "Advanced",
+      "days": {
+        "standard": 16,
+        "aggressive": 8
+      },
+      "project": "Library: Book and Library classes with search.",
+      "links": [
+        {
+          "title": "MDN: Classes",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes"
+        },
+        {
+          "title": "javascript.info: Classes",
+          "url": "https://javascript.info/classes"
+        }
+      ],
+      "topics": [
+        {
+          "id": "classes",
+          "name": "class and constructor",
+          "link": "https://javascript.info/class",
+          "try": "Write a class with a constructor and a method."
+        },
+        {
+          "id": "class_extends",
+          "name": "extends and super",
+          "link": "https://javascript.info/class-inheritance",
+          "try": "Make a subclass that overrides a method and calls super."
+        },
+        {
+          "id": "getters_static",
+          "name": "getters, setters and static",
+          "link": "https://javascript.info/property-accessors",
+          "try": "Add a getter and a static method to a class."
+        },
+        {
+          "id": "map_set",
+          "name": "Map and Set",
+          "link": "https://javascript.info/map-set",
+          "try": "Count words with a Map and remove duplicates with a Set."
+        },
+        {
+          "id": "optional_chaining",
+          "name": "optional chaining ?.",
+          "link": "https://javascript.info/optional-chaining",
+          "try": "Read a nested property that may be missing using ?."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Node & Real Projects",
+      "tier": "Advanced",
+      "days": {
+        "standard": 28,
+        "aggressive": 14
+      },
+      "project": "Command-line notes tool: add and list notes stored in a file.",
+      "links": [
+        {
+          "title": "Node.js: Learn",
+          "url": "https://nodejs.org/en/learn/getting-started/introduction-to-nodejs"
+        },
+        {
+          "title": "MDN: Server-side JavaScript",
+          "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side"
+        }
+      ],
+      "topics": [
+        {
+          "id": "fs_files",
+          "name": "fs files",
+          "link": "https://nodejs.org/api/fs.html",
+          "try": "Read a text file with fs and print its length."
+        },
+        {
+          "id": "process_argv",
+          "name": "process.argv",
+          "link": "https://nodejs.org/api/process.html#processargv",
+          "try": "Print the arguments passed on the command line."
+        },
+        {
+          "id": "npm_package",
+          "name": "an npm package",
+          "link": "https://docs.npmjs.com/getting-started",
+          "try": "Run npm install for a package and use it."
+        },
+        {
+          "id": "node_test",
+          "name": "node:test and assert",
+          "link": "https://nodejs.org/api/test.html",
+          "try": "Write one test with node:test and assert."
+        },
+        {
+          "id": "http_server",
+          "name": "HTTP server",
+          "link": "https://nodejs.org/api/http.html",
+          "try": "Start a server that answers every request with a message."
+        }
+      ]
+    }
+  ]
+}
