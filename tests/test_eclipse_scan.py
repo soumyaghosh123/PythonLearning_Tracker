@@ -107,17 +107,52 @@ class EclipseScanTests(unittest.TestCase):
             '<classpathentry kind="src" path="/Other"/>'
             '<classpathentry combineaccessrules="false" kind="src" path="/Dep"/>'
             '<classpathentry kind="output" path="classes"/></classpath>', encoding="utf-8")
-        self.assertEqual(src_and_output(proj), ([proj / "source"], proj / "classes"))
+        self.assertEqual(src_and_output(proj), [(proj / "source", proj / "classes")])
         (proj / "source" / "A.java").write_text("class A {}", encoding="utf-8")
         (proj / "classes" / "A.class").write_bytes(b"\xca\xfe")
         new = scan_workspaces([self.tmp / "ws2"], self.data, [], lambda p: False)
         self.assertEqual([Path(e["file"]).name for e in new], ["A.java"])
 
+    def _project(self, name, entries, built):
+        proj = self.tmp / "ws3" / name
+        proj.mkdir(parents=True)
+        (proj / ".classpath").write_text(f"<classpath>{entries}</classpath>", encoding="utf-8")
+        for src, out in built:
+            (proj / src).mkdir(parents=True)
+            (proj / out).mkdir(parents=True)
+            (proj / src / "A.java").write_text(f"class A {{ /* {src} */ }}", encoding="utf-8")
+            (proj / out / "A.class").write_bytes(bytes([0xCA, 0xFE]))
+        return proj
+
+    def test_buildship_per_source_output(self):
+        entries = ('<classpathentry kind="src" output="bin/main" path="src/main/java"/>'
+                   '<classpathentry kind="src" output="bin/test" path="src/test/java"/>'
+                   '<classpathentry kind="output" path="bin/default"/>')
+        proj = self._project("G", entries, [("src/main/java", "bin/main"), ("src/test/java", "bin/test")])
+        self.assertEqual(src_and_output(proj), [(proj / "src/main/java", proj / "bin/main"),
+                                                (proj / "src/test/java", proj / "bin/test")])
+        new = scan_workspaces([self.tmp / "ws3"], self.data, [], lambda p: False)
+        self.assertEqual(len(new), 2)
+
+    def test_m2e_per_source_output(self):
+        entries = ('<classpathentry kind="src" output="target/classes" path="src/main/java"/>'
+                   '<classpathentry kind="src" output="target/test-classes" path="src/test/java"/>'
+                   '<classpathentry kind="output" path="target/classes"/>')
+        self._project("M", entries, [("src/main/java", "target/classes"), ("src/test/java", "target/test-classes")])
+        new = scan_workspaces([self.tmp / "ws3"], self.data, [], lambda p: False)
+        self.assertEqual(len(new), 2)
+
+    def test_source_without_own_output_uses_project_output(self):
+        entries = ('<classpathentry kind="src" path="src"/><classpathentry kind="src" output="bin/t" path="tst"/>'
+                   '<classpathentry kind="output" path="out"/>')
+        proj = self._project("P", entries, [("src", "out"), ("tst", "bin/t")])
+        self.assertEqual(src_and_output(proj), [(proj / "src", proj / "out"), (proj / "tst", proj / "bin/t")])
+
     def test_default_classpath_folders(self):
         proj = self.tmp / "p"
         proj.mkdir()
         (proj / ".classpath").write_text("not xml", encoding="utf-8")
-        self.assertEqual(src_and_output(proj), ([proj / "src"], proj / "bin"))
+        self.assertEqual(src_and_output(proj), [(proj / "src", proj / "bin")])
 
     def test_skips_metadata(self):
         plug = self.ws / ".metadata" / ".plugins" / "p"

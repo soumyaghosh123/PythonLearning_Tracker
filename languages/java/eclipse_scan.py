@@ -79,20 +79,24 @@ def project_dirs(workspace):
 
 
 def src_and_output(project):
-    """(source folders, output folder) from the project's .classpath, with Eclipse's defaults."""
+    """[(source folder, its output folder)] from the project's .classpath, with Eclipse's defaults.
+
+    A src entry may name its own output (m2e: target/test-classes, Buildship: bin/main);
+    otherwise it builds into the project's kind="output" folder."""
     project = Path(project)
-    sources, output = [], None
+    sources, default_output = [], None
     try:
         root = ET.parse(project / ".classpath").getroot()
         for entry in root.iter("classpathentry"):
             path, kind = entry.get("path", ""), entry.get("kind")
             if kind == "src" and path and not path.startswith("/") and entry.get("combineaccessrules") is None:
-                sources.append(project / path)
+                sources.append((project / path, entry.get("output")))
             elif kind == "output" and path:
-                output = project / path
+                default_output = project / path
     except (OSError, ET.ParseError):
         pass
-    return sources or [project / "src"], output or project / "bin"
+    default_output = default_output or project / "bin"
+    return [(src, project / out if out else default_output) for src, out in sources] or [(project / "src", default_output)]
 
 
 def _norm(path):
@@ -158,8 +162,7 @@ def scan_workspaces(workspaces, data_dir, runs, is_excluded):
     new = []
     for workspace in workspaces:
         for project in project_dirs(workspace):
-            sources, output = src_and_output(project)
-            for source_dir in sources:
+            for source_dir, output in src_and_output(project):
                 for java in _java_files(source_dir):
                     try:
                         cls = output / java.relative_to(source_dir).with_suffix(".class")
