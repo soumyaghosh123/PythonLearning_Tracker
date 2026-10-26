@@ -67,11 +67,14 @@ Don't paste the App Password anywhere except the setup wizard's hidden prompt.
 
 ### 2. Run the setup wizard
 
-From `C:\Python` in the VS Code terminal:
+Open the VS Code terminal and check which folder it's in (the prompt shows it, e.g. `PS C:\Python>`):
 
-```powershell
-python tracker\setup.py
-```
+| Terminal is in… | Type |
+|---|---|
+| `C:\Python` | `python tracker\setup.py` |
+| `C:\Python\tracker` | `python setup.py` |
+
+Always start with `python`. Typing just `tracker\setup.py` gives a PowerShell "not recognized" error.
 
 | Question | What to enter |
 |---|---|
@@ -318,7 +321,7 @@ The daily task runs `send_report.py` once a day at `send_time`. If the PC was of
 
 ## Commands
 
-Run from `C:\Python`:
+The commands below are written for a terminal in `C:\Python`. If your terminal is inside the `tracker` folder (`PS C:\Python\tracker>`), drop the `tracker\` part: `python setup.py`, `python track.py`, and so on.
 
 | Command | What it does |
 |---|---|
@@ -454,6 +457,8 @@ Every step of every hook is wrapped so it can never break your programs.
 
 | Problem | Fix |
 |---|---|
+| **`can't open file 'C:\\Python\\tracker\\tracker\\setup.py'`** | Your terminal is already inside `tracker`. Run `python setup.py` there, or `cd ..` and then `python tracker\setup.py`. |
+| **`tracker\setup.py : The term ... is not recognized`** | You left out `python` at the start. Type `python tracker\setup.py`. |
 | **A run doesn't appear on the dashboard** | Refresh with `python tracker\track.py`. Check the file is inside the language's `code_folder` (Python, JavaScript) and not in `tracker\`. Check the run is on or after that language's `start_date`. |
 | **Nothing is logged at all (Python)** | Check the logger file exists (see above). If you use a **virtual environment** or a **new Python version**, user site-packages may be off or different; re-run setup with that Python. |
 | **Java run not logged** | Restart Eclipse (it only reads the setting at startup). In a new terminal run `echo %JAVA_TOOL_OPTIONS%`; it should contain `tracker-agent.jar`. Check the folder isn't excluded (built-in exclusions or `exclude_folders`). Without a JDK only Eclipse builds are seen: install one and re-run setup. |
