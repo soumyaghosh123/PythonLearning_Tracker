@@ -93,3 +93,56 @@ class MigrateTests(unittest.TestCase):
         self.assertEqual(settings.runs_path("java"), home / "data" / "java" / "runs.jsonl")
         self.assertEqual(settings.snapshot_dir("java"), home / "data" / "java" / "snapshots")
         self.assertFalse(hasattr(settings, "load_curriculum"))
+
+
+class MigrateEdgeTests(unittest.TestCase):
+    GOOD = {"time": "t", "file": "a.py", "status": "success", "error": None, "duration": 1, "sha": "abc"}
+
+    def test_corrupt_and_non_dict_lines_are_preserved(self):
+        home = fresh_home()
+        from settings import load_config, save_json
+        save_json(home / "config.json", {"learner_name": "S"})
+        old = home / "data" / "runs.jsonl"
+        old.parent.mkdir(parents=True)
+        old.write_text("\n".join([json.dumps(self.GOOD), "{not json", "null", "[1]"]) + "\n", encoding="utf-8")
+        load_config()
+        load_config()
+        self.assertEqual(len(read_jsonl(home / "data" / "python" / "runs.jsonl")), 1)
+        corrupt = (home / "data" / "python" / "runs.corrupt.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(corrupt, ["{not json", "null", "[1]"])
+        self.assertFalse(old.exists())
+        self.assertFalse((home / "data" / "runs.jsonl.migrating").exists())
+
+    def test_leftover_migrating_file_is_processed_once(self):
+        home = fresh_home()
+        from settings import load_config, save_json
+        save_json(home / "config.json", {"learner_name": "S"})
+        write_runs(home / "data" / "runs.jsonl.migrating", [self.GOOD])
+        load_config()
+        load_config()
+        self.assertEqual(len(read_jsonl(home / "data" / "python" / "runs.jsonl")), 1)
+        self.assertFalse((home / "data" / "runs.jsonl.migrating").exists())
+
+    def test_snapshot_collision_keeps_existing(self):
+        home = fresh_home()
+        from settings import load_config, save_json
+        save_json(home / "config.json", {"learner_name": "S"})
+        (home / "data" / "snapshots").mkdir(parents=True)
+        (home / "data" / "snapshots" / "abc.py").write_text("old")
+        (home / "data" / "python" / "snapshots").mkdir(parents=True)
+        (home / "data" / "python" / "snapshots" / "abc.py").write_text("new")
+        load_config()
+        self.assertEqual((home / "data" / "python" / "snapshots" / "abc.py").read_text(), "new")
+
+    def test_existing_new_runs_are_kept(self):
+        home = fresh_home()
+        from settings import load_config, save_json
+        save_json(home / "config.json", {"learner_name": "S"})
+        existing = {"time": "t0", "files": [], "source": "hook", "status": "success"}
+        write_runs(home / "data" / "python" / "runs.jsonl", [existing])
+        write_runs(home / "data" / "runs.jsonl", [self.GOOD])
+        load_config()
+        entries = read_jsonl(home / "data" / "python" / "runs.jsonl")
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries[0], existing)
+        self.assertEqual(entries[1]["files"], [{"file": "a.py", "sha": "abc"}])

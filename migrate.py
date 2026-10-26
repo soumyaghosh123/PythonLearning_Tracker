@@ -4,6 +4,7 @@ Safe to call on every start: each step does nothing once it has been applied.
 """
 
 import json
+import os
 import shutil
 
 import settings
@@ -40,24 +41,54 @@ def _migrate_config():
     return True
 
 
+def _convert_file(path):
+    """Append the converted lines of an old runs file to the Python runs file, then remove it.
+
+    Lines that cannot be converted are kept verbatim in runs.corrupt.jsonl.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    good, bad = [], []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            old = json.loads(line)
+            if not isinstance(old, dict):
+                raise TypeError("run entry is not an object")
+            good.append(json.dumps(convert_entry(old)) + "\n")
+        except (ValueError, TypeError):
+            bad.append(line + "\n")
+    out_dir = settings.lang_dir("python")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # One write per file, so an interruption cannot leave half of it behind.
+    for name, lines in (("runs.jsonl", good), ("runs.corrupt.jsonl", bad)):
+        if lines:
+            with (out_dir / name).open("a", encoding="utf-8") as f:
+                f.write("".join(lines))
+    try:
+        path.unlink()
+    except OSError:
+        # Never leave content that would be appended again on the next start.
+        path.write_text("", encoding="utf-8")
+
+
 def _migrate_runs():
     old_path = settings.DATA_DIR / "runs.jsonl"
-    if not old_path.exists():
-        return False
-    new_path = settings.runs_path("python")
-    new_path.parent.mkdir(parents=True, exist_ok=True)
-    with old_path.open(encoding="utf-8") as src, new_path.open("a", encoding="utf-8") as dst:
-        for line in src:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = convert_entry(json.loads(line))
-            except ValueError:
-                continue  # skip a corrupt line rather than lose the rest
-            dst.write(json.dumps(entry) + "\n")
-    old_path.unlink()
-    return True
+    pending = settings.DATA_DIR / "runs.jsonl.migrating"
+    changed = False
+    # A leftover from an interrupted run is processed first, exactly once.
+    if pending.exists():
+        _convert_file(pending)
+        changed = True
+    if old_path.exists():
+        try:
+            # Atomic rename: lines the old logger writes afterwards go to a fresh file.
+            os.replace(old_path, pending)
+        except OSError:
+            return changed
+        _convert_file(pending)
+        changed = True
+    return changed
 
 
 def _migrate_snapshots():
