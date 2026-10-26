@@ -127,18 +127,13 @@ Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $trigger
 
 
 def store_password(password):
-    import winreg
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE) as key:
-        winreg.SetValueEx(key, PASSWORD_ENV_VAR, 0, winreg.REG_SZ, password)
+    from languages.envvars import set_user_env
+    set_user_env(PASSWORD_ENV_VAR, password)
 
 
 def remove_password():
-    import winreg
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE) as key:
-            winreg.DeleteValue(key, PASSWORD_ENV_VAR)
-    except OSError:
-        pass
+    from languages.envvars import set_user_env
+    set_user_env(PASSWORD_ENV_VAR, "")
 
 
 # ---------- main flows ----------
