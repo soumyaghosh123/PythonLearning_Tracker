@@ -6,6 +6,7 @@ Run it any time to see where you are:
 
 import datetime as dt
 import json
+import os
 import traceback
 from collections import Counter
 from pathlib import Path
@@ -27,8 +28,13 @@ def counts(run):
 
 # ---------- loading runs ----------
 
-def load_runs(key, start_date):
-    """All logged runs of one language on or after its start date, oldest first."""
+def parse_run(run):
+    run["dt"] = dt.datetime.fromisoformat(run["time"])
+    return run
+
+
+def load_runs(key, start_date=None):
+    """Logged runs of one language on or after its start date (None = all), oldest first."""
     runs = []
     path = runs_path(key)
     if not path.exists():
@@ -36,11 +42,10 @@ def load_runs(key, start_date):
     with open(path, encoding="utf-8") as f:
         for line in f:
             try:
-                run = json.loads(line)
-                run["dt"] = dt.datetime.fromisoformat(run["time"])
+                run = parse_run(json.loads(line))
             except (ValueError, KeyError, TypeError):
                 continue  # skip a damaged line rather than crash
-            if run["dt"].date() >= start_date:
+            if start_date is None or run["dt"].date() >= start_date:
                 runs.append(run)
     runs.sort(key=lambda r: r["dt"])
     return runs
@@ -168,23 +173,29 @@ def latest_per_file(runs):
     return latest
 
 
+SKIP_DIRS = {"node_modules", ".git", ".metadata", ".vscode", ".idea", "bin", "build", "dist",
+             "target", "__pycache__"}
+
+
 def saved_not_run(code_folder, extensions, runs, today):
     """Source files saved in the last 7 days that were never run."""
     ran = {r["file"].lower() for r in runs} | {f["file"].lower() for r in runs for f in run_files(r)}
     since = dt.datetime.combine(today - 6 * DAY, dt.time())
     names = []
     tracker_dir = Path(__file__).resolve().parent
-    for path in Path(code_folder).rglob("*"):
-        if path.suffix.lower() not in extensions:
-            continue
-        if tracker_dir in path.resolve().parents:
-            continue
-        try:
-            modified = dt.datetime.fromtimestamp(path.stat().st_mtime)
-        except OSError:
-            continue
-        if modified >= since and str(path.resolve()).lower() not in ran:
-            names.append(path.name)
+    for root, dirs, files in os.walk(code_folder):
+        # Prune dependency/build folders and the tracker itself so we never descend into them.
+        dirs[:] = [d for d in dirs if d.lower() not in SKIP_DIRS and (Path(root) / d).resolve() != tracker_dir]
+        for name in files:
+            path = Path(root) / name
+            if path.suffix.lower() not in extensions:
+                continue
+            try:
+                modified = dt.datetime.fromtimestamp(path.stat().st_mtime)
+            except OSError:
+                continue
+            if modified >= since and str(path.resolve()).lower() not in ran:
+                names.append(path.name)
     return sorted(names)[:15]
 
 
@@ -199,8 +210,18 @@ def build_language_report(key, config, today):
     start_date = dt.date.fromisoformat(lang_config["start_date"])
 
     # Collectors (agent logs, saved-file scans...) append to this language's runs.jsonl.
-    pack.collect(lang_config, lang_dir(key), load_runs(key, start_date))
+    # Collectors dedupe against ALL runs (not just those after the start date).
+    collected = pack.collect(lang_config, lang_dir(key), load_runs(key)) or []
     runs = [r for r in load_runs(key, start_date) if r["dt"].date() <= today]
+    seen = {(r["time"], r.get("file"), r["status"]) for r in runs}
+    for entry in collected:
+        try:
+            entry = parse_run(dict(entry))
+        except (ValueError, KeyError, TypeError):
+            continue
+        if start_date <= entry["dt"].date() <= today and (entry["time"], entry.get("file"), entry["status"]) not in seen:
+            runs.append(entry)
+    runs.sort(key=lambda r: r["dt"])
     attach_analysis(pack, key, runs)
     levels = build_levels(curriculum, plan_key, start_date, today, runs)
 

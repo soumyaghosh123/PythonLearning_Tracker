@@ -132,6 +132,27 @@ class TrackTests(unittest.TestCase):
         rep = self.track.build_report(config, today=date(2026, 10, 3))["languages"]["python"]
         self.assertGreater(rep["topics_done"], 0)
 
+    def test_collect_sees_pre_start_runs_every_build(self):
+        self.java_runs([jrun("10-15", "compiled", "pre")])
+        seen = []
+        self.java.collect = lambda cfg, d, runs: seen.append([f["sha"] for r in runs for f in r["files"]]) or []
+        self.addCleanup(lambda: delattr(self.java, "collect"))
+        for _ in range(2):
+            rep = self.track.build_report(self.config, today=date(2026, 11, 3))["languages"]["java"]
+        self.assertEqual(seen, [["pre"], ["pre"]])
+        self.assertEqual(rep["stats"]["total_runs"], 0)
+
+    def test_saved_not_run_skips_dependency_folders(self):
+        import datetime as dt, time
+        code = self.home / "code"
+        for rel in ("good.java", "node_modules/x.java", ".git/y.java", "bin/z.java"):
+            p = code / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("x")
+        today = dt.date.fromtimestamp(time.time())
+        names = self.track.saved_not_run(code, {".java"}, [], today)
+        self.assertEqual(names, ["good.java"])
+
     def test_counts(self):
         t = self.track
         self.assertTrue(t.counts({"status": "compiled"}))
