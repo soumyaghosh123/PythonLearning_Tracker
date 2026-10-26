@@ -1,5 +1,6 @@
 """Shared file paths and helpers for loading/saving the tracker's JSON files."""
 
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -116,3 +117,12 @@ def load_config():
         else:
             merged[key] = value
     return merged
+
+
+def log_line(text):
+    """Print a timestamped line and append it to data/send_report.log."""
+    line = f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {text}"
+    print(line)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(DATA_DIR / "send_report.log", "a", encoding="utf-8") as f:
+        f.write(line + "\n")

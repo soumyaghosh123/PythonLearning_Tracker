@@ -18,7 +18,7 @@ def main(argv):
     pack = pack_for_path(path)
     if pack is None:
         raise SystemExit(f"Unsupported file type: {path.suffix}")
-    result = pack.analyze(path.read_text(encoding="utf-8", errors="replace"), str(path))
+    result = pack.analyze(path.read_text(encoding="utf-8-sig", errors="replace"), str(path))
     for key, value in result.items():
         print(f"{key:>11}: {value}")
 

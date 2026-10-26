@@ -21,18 +21,14 @@ import webbrowser
 
 from dashboard import write_dashboard, write_plan
 from emailer import inactive_email, progress_email, send_email, stuck_email
-from settings import DATA_DIR, EMAIL_STATE_PATH, load_config, load_curriculum, load_json, save_json
+from settings import DATA_DIR, EMAIL_STATE_PATH, load_config, load_curriculum, load_json, log_line, save_json
 from track import build_report
 
 LOG_PATH = DATA_DIR / "send_report.log"
 
 
 def log(message):
-    line = f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {message}"
-    print(line)
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
+    log_line(message)
 
 
 def days_since(iso_date, today):

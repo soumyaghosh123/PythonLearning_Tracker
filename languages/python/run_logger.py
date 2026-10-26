@@ -57,7 +57,7 @@ def _record(started, error):
         code = f.read()
     sha = hashlib.sha256(code).hexdigest()[:16]
 
-    snapshots = os.path.join(DATA_DIR, "snapshots")
+    snapshots = os.path.join(DATA_DIR, "python", "snapshots")
     os.makedirs(snapshots, exist_ok=True)
     snapshot = os.path.join(snapshots, sha + ".py")
     if not os.path.exists(snapshot):
@@ -76,10 +76,12 @@ def _record(started, error):
         "file": path,
         "status": status,
         "error": error,
+        "error_count": None,
         "duration": round(time.time() - started, 2),
-        "sha": sha,
+        "source": "hook",
+        "files": [{"file": path, "sha": sha}],
     }
-    with open(os.path.join(DATA_DIR, "runs.jsonl"), "a", encoding="utf-8") as f:
+    with open(os.path.join(DATA_DIR, "python", "runs.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
 
 
