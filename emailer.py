@@ -11,7 +11,8 @@ import ssl
 from email.message import EmailMessage
 from pathlib import Path
 
-from settings import DASHBOARD_PATH, PASSWORD_ENV_VAR
+from settings import DASHBOARD_PATH, PASSWORD_ENV_VAR, log_line
+from track import counts
 
 BLUE, GREEN, RED, YELLOW, MUTED = "#3572a5", "#2e9e5b", "#d64545", "#f2c94c", "#6b7385"
 TIER_ICON = {"Beginner": "🟢", "Intermediate": "🟡", "Advanced": "🔴"}
@@ -140,7 +141,7 @@ def language_section(rep, since=None):
     # Files that counted since the last report (file names only, never code)
     latest = {}
     for run in rep["_runs"]:
-        if run["status"] in ("success", "compiled") and run["analysis"] and (since is None or run["dt"] > since):
+        if counts(run) and run["analysis"] and (since is None or run["dt"] > since):
             latest[run["file"]] = run
     if latest:
         lines = "".join(
@@ -151,7 +152,7 @@ def language_section(rep, since=None):
                  f'<tr style="color:{MUTED};"><th align="left">File</th><th align="left">Lines</th>'
                  f'<th align="left">Score</th><th align="left">Level</th></tr>{lines}</table>')
     else:
-        table = f'<div style="font-size:14px;color:{MUTED};">No successful runs since the last report.</div>'
+        table = f'<div style="font-size:14px;color:{MUTED};">No new working code since the last report.</div>'
     rows.append(row(heading("📂 Files since last report") + table))
 
     tips = []
@@ -197,16 +198,25 @@ def progress_email(report, since=None):
     rows = [overview_row(reps)] if reps else []
     parts, text_lines = [], []
     for rep in reps:
-        if "error" in rep:
-            rows.append(error_row(rep))
-            text_lines.append(f"{rep['label']}: couldn't read this language's data today.")
-            continue
-        rows.extend(language_section(rep, since))
-        parts.append(subject_part(rep))
-        s = rep["stats"]
-        text_lines.append(f"{rep['label']}: {status_text(rep)} · Day {max(0, rep['day_number'])} of {rep['total_days']} · "
-                          f"Levels {rep['levels_done']}/{len(rep['levels'])} · Streak {s['streak']} days · "
-                          f"Lines this week {s['week_lines']}/{rep['plan']['weekly_lines_target']}")
+        if "error" not in rep:
+            try:
+                section = language_section(rep, since)
+                part = subject_part(rep)
+                s = rep["stats"]
+                line = (f"{rep['label']}: {status_text(rep)} · Day {max(0, rep['day_number'])} of {rep['total_days']} · "
+                        f"Levels {rep['levels_done']}/{len(rep['levels'])} · Streak {s['streak']} days · "
+                        f"Lines this week {s['week_lines']}/{rep['plan']['weekly_lines_target']}")
+            except Exception as exc:
+                # One broken language must not stop the others' email.
+                log_line(f"Could not render the {rep.get('label')} section of the progress email: {exc!r}")
+                rep = {"icon": rep.get("icon", ""), "label": rep.get("label", "?"), "error": "render"}
+            else:
+                rows.extend(section)
+                parts.append(part)
+                text_lines.append(line)
+                continue
+        rows.append(error_row(rep))
+        text_lines.append(f"{rep['label']}: couldn't read this language's data today.")
     streak = report["overall"]["any_streak"]
     subject = "📚 Progress: " + " · ".join(parts + [f"🔥 {streak}-day streak"])
     body = wrap(BLUE, "📚 Learning Progress Report",

@@ -42,6 +42,16 @@ def language_state(state, key):
     return entry
 
 
+def renders(build, arg, label):
+    """True if this language's part of an alert email can be built; a broken one is logged and left out."""
+    try:
+        build([arg])
+        return True
+    except Exception as exc:
+        log(f"Skipped {label} in an alert email: {exc!r}")
+        return False
+
+
 def main():
     preview = "--preview" in sys.argv
     send_now = "--send-now" in sys.argv
@@ -79,6 +89,7 @@ def main():
                 gap = days_since(last_alert, today)
                 if preview or gap is None or gap >= alerts["reminder_every_days"]:
                     stuck.append((key, rep, last_alert is not None))
+    stuck = [x for x in stuck if renders(stuck_email, (x[1], x[2]), x[1]["label"])]
     if stuck:
         emails.append(("stuck",) + stuck_email([(rep, reminder) for _, rep, reminder in stuck]))
 
@@ -90,6 +101,7 @@ def main():
             gap = days_since(language_state(state, key)["last_inactive_sent"], today)
             if preview or gap is None or gap >= limit:
                 inactive.append((key, rep))
+    inactive = [x for x in inactive if renders(inactive_email, x[1], x[1]["label"])]
     if inactive:
         emails.append(("inactive",) + inactive_email([rep for _, rep in inactive]))
 

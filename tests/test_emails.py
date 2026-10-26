@@ -118,18 +118,25 @@ class EmailTests(unittest.TestCase):
 
     # ---------- the daily check ----------
 
-    def run_daily(self, config, state=None):
+    def run_daily(self, config, state=None, argv=(), mutate=None):
         """Run send_report.main() with email sending recorded (never sent) and today fixed."""
         self.settings.save_json(self.settings.CONFIG_PATH, config)
         if state is not None:
             self.settings.save_json(self.settings.EMAIL_STATE_PATH, state)
         real_build = self.track.build_report
         sent = []
+
+        def build(cfg):
+            report = real_build(cfg, today=TODAY)
+            if mutate:
+                mutate(report)
+            return report
         with mock.patch.object(self.send_report, "send_email", lambda cfg, subject, h, t: sent.append(subject)), \
-                mock.patch.object(self.send_report, "build_report", lambda cfg: real_build(cfg, today=TODAY)), \
+                mock.patch.object(self.send_report, "build_report", build), \
+                mock.patch.object(self.emailer, "log_line", lambda text: None), \
                 mock.patch.object(self.send_report, "log_line", lambda text: None), \
                 mock.patch.object(self.send_report, "log", lambda text: None), \
-                mock.patch.object(self.send_report.sys, "argv", ["send_report.py"]):
+                mock.patch.object(self.send_report.sys, "argv", ["send_report.py", *argv]):
             self.send_report.main()
         return sent
 
@@ -169,6 +176,40 @@ class EmailTests(unittest.TestCase):
         self.assertEqual(self.stuck_subjects(sent), [])
         state = json.loads(self.settings.EMAIL_STATE_PATH.read_text(encoding="utf-8"))
         self.assertEqual(state["languages"]["python"]["alerts"], {level: yesterday})
+
+    def test_broken_language_does_not_stop_the_others(self):
+        def break_java(report):
+            del report["languages"]["java"]["current_level"]["topics"]
+        sent = self.run_daily(self.config(), argv=["--send-now"], mutate=break_java)
+        progress = [s for s in sent if s.startswith("📚 Progress")]
+        self.assertEqual(len(progress), 1)
+        self.assertNotIn("☕ L", progress[0])
+        stuck = self.stuck_subjects(sent)
+        self.assertEqual(len(stuck), 1)
+        self.assertTrue(stuck[0].startswith("🐍 ⚠️ Stuck on Level"))
+        state = json.loads(self.settings.EMAIL_STATE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(len(state["languages"]["python"]["alerts"]), 1)
+        self.assertEqual(state["languages"].get("java", {}).get("alerts", {}), {})
+        self.assertIsNone(state["languages"].get("java", {}).get("last_inactive_sent"))
+        self.assertEqual(state["languages"]["python"]["last_inactive_sent"], TODAY.isoformat())
+
+    def test_broken_language_row_in_progress_email(self):
+        report = self.report()
+        del report["languages"]["java"]["current_level"]["topics"]
+        subject, html, _ = self.emailer.progress_email(report)
+        self.assertIn("couldn't read", html)
+        self.assertNotIn("☕ L", subject)
+
+    def saved_run(self, name, ok):
+        analysis = {"lines": 7, "score": 3, "level": "Beginner", "syntax_ok": ok, "topics": []}
+        return {"status": "saved", "analysis": analysis, "file": "C:\w\\" + name, "dt": dt.datetime(2026, 10, 20, 10, 0)}
+
+    def test_files_table_uses_engine_counting_rule(self):
+        report = self.report()
+        report["languages"]["python"]["_runs"] = [self.saved_run("GoodSaved.py", True), self.saved_run("BadSaved.py", False)]
+        _, html, _ = self.emailer.progress_email(report)
+        self.assertIn("GoodSaved.py", html)
+        self.assertNotIn("BadSaved.py", html)
 
     def test_failed_send_does_not_record_state(self):
         config = self.config(java_start="2026-11-01")
