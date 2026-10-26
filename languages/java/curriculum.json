@@ -228,7 +228,7 @@
         {
           "id": "overloading",
           "name": "method overloading",
-          "link": "https://www.w3schools.com/java/java_method_overloading.asp",
+          "link": "https://www.w3schools.com/java/java_methods_overloading.asp",
           "try": "Write two add methods, one for ints and one for doubles."
         },
         {

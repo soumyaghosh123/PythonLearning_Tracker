@@ -84,6 +84,39 @@ class JavaAnalyzerTests(unittest.TestCase):
         self.assertIn("polymorphism", analyze_java("class A { void m() { Animal a = new Dog(); } }")["topics"])
         self.assertNotIn("polymorphism", analyze_java("class A { void m() { Dog a = new Dog(); } }")["topics"])
 
+    def test_polymorphism_override_clause(self):
+        src = ("class Dog extends Animal { @Override void speak() {} }\n"
+               "class M { void m() { List<Animal> l = new ArrayList<>(); l.add(new Dog()); } }")
+        self.assertIn("polymorphism", analyze_java(src)["topics"])
+
+    def test_encapsulation_needs_getter_declaration(self):
+        calls = "class A { private int x; void f(Exception e) { e.getMessage(); } }"
+        decl = "class A { private int x; int getX() { return x; } }"
+        self.assertNotIn("encapsulation", analyze_java(calls)["topics"])
+        self.assertIn("encapsulation", analyze_java(decl)["topics"])
+
+    def test_nested_class_and_external_class(self):
+        nested = ("public class Main { static class Person { Person(String n) {} }\n"
+                  " public static void main(String[] a) { Person p = new Person(\"x\"); } }")
+        t = analyze_java(nested)["topics"]
+        self.assertIn("class_new", t)
+        self.assertIn("constructors", t)
+        external = "public class Main { public static void main(String[] a) { Dog d = new Dog(\"x\"); } }"
+        self.assertIn("class_new", analyze_java(external)["topics"])
+        jdk = "public class Main { public static void main(String[] a) { Scanner s = new Scanner(System.in); } }"
+        self.assertNotIn("class_new", analyze_java(jdk)["topics"])
+
+    def test_strings_ignores_main_args(self):
+        self.assertNotIn("strings", analyze_java(read("hello.java"))["topics"])
+        self.assertIn("strings", analyze_java(read("l1_basics.java"))["topics"])
+        src = "class A { int f(String s) { return s.length(); } }"
+        self.assertIn("strings", analyze_java(src)["topics"])
+
+    def test_overload_delegation_is_not_recursion(self):
+        src = "class A { int add(int a) { return add(a, 0); } int add(int a, int b) { return a + b; } }"
+        self.assertNotIn("recursion", analyze_java(src)["topics"])
+        self.assertIn("recursion", analyze_java(read("l4_methods.java"))["topics"])
+
     def test_junit_and_packages(self):
         r = analyze_java("package app.core;\nimport org.junit.jupiter.api.Test;\nclass T { @Test void t() {} }")
         self.assertIn("junit", r["topics"])

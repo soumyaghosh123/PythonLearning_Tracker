@@ -40,14 +40,38 @@ def _methods(code):
 
 
 def _declared_classes(code):
-    """(kind, name, start) of every class-like declaration, minus the one holding main."""
+    """(kind, name, start) of every class-like declaration, minus the main class.
+
+    The main class is the outermost declaration whose braces contain `main`,
+    so nested helper classes declared above main still count.
+    """
     decls = [(m.group(1), m.group(2), m.start()) for m in _CLASS.finditer(code)]
     main = _MAIN.search(code)
     if main:
-        before = [d for d in decls if d[2] < main.start()]
-        if before:
-            decls.remove(before[-1])
+        for d in decls:
+            brace = code.find("{", d[2])
+            if brace >= 0 and brace < main.start() < brace + len(_body(code, brace)) + 1:
+                decls.remove(d)
+                break
     return decls
+
+
+def _split_top(text):
+    """Split on commas outside (), <> and [] ; empty text gives no items."""
+    parts, depth, cur = [], 0, ""
+    for ch in text:
+        if ch in "(<[":
+            depth += 1
+        elif ch in ")>]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur)
+    return parts
 
 
 def _is_overloaded(c):
@@ -60,9 +84,18 @@ def _is_overloaded(c):
 
 
 def _is_recursive(c):
-    for _type, name, _params, body in _methods(c.code):
-        if not name[0].isupper() and re.search(r"(?<![\w.])(?:this\.)?" + name + r"\s*\(", body):
-            return True
+    for _type, name, params, body in _methods(c.code):
+        if name[0].isupper():
+            continue
+        want = len(_split_top(params))
+        for m in re.finditer(r"(?<![\w.])(?:this\.)?" + name + r"\s*\(", body):
+            end = m.end()
+            depth, i = 1, end
+            while i < len(body) and depth:
+                depth += {"(": 1, ")": -1}.get(body[i], 0)
+                i += 1
+            if len(_split_top(body[end:i - 1])) == want:
+                return True
     return False
 
 
@@ -71,9 +104,27 @@ def _returns_value(c):
                for t, name, p, body in _methods(c.code) if name != "main")
 
 
+_JDK_TYPES = {
+    "String", "StringBuilder", "Scanner", "ArrayList", "LinkedList", "HashMap", "TreeMap", "HashSet",
+    "TreeSet", "File", "FileReader", "FileWriter", "BufferedReader", "BufferedWriter", "PrintWriter",
+    "InputStreamReader", "Random", "Object", "Thread", "Exception", "RuntimeException",
+    "IllegalArgumentException", "IllegalStateException", "IOException", "Integer", "Double", "Date",
+}
+
+
 def _uses_own_class(c):
-    return any(kind == "class" and re.search(r"\bnew\s+" + name + r"\s*\(", c.code)
-               for kind, name, _ in _declared_classes(c.code))
+    """`new X(` where X is a class of this file or (one class per file) another file."""
+    own = {name for kind, name, _ in _declared_classes(c.code) if kind == "class"}
+    declared = {m.group(2) for m in _CLASS.finditer(c.code)}
+    for m in re.finditer(r"\bnew\s+([A-Z]\w*)\s*(?:<[^<>]*>)?\s*\(", c.code):
+        name = m.group(1)
+        if name in own:
+            return True
+        if name in _JDK_TYPES or name.endswith(("Exception", "Error")):
+            continue
+        if name not in declared:
+            return True
+    return False
 
 
 def _has_constructor(c):
@@ -84,6 +135,34 @@ def _has_constructor(c):
             if not re.search(r"\bnew\s*$", c.code[:m.start()]):
                 return True
     return False
+
+
+_STR_METHOD = (r"(?:length|charAt|substring|indexOf|toUpperCase|toLowerCase|trim|equals|"
+               r"equalsIgnoreCase|split|replace|contains|startsWith|endsWith|isEmpty)")
+
+
+def _uses_strings(c):
+    """A String variable holding a literal, or a string method on a String variable
+    (the `String[] args` parameter of main does not count)."""
+    if re.search(r"\bString\s+\w+\s*=\s*\"\"", c.code):
+        return True
+    for name in re.findall(r"\bString\s+(\w+)\s*[=;,)]", c.code):
+        if re.search(r"\b" + name + r"\s*\.\s*" + _STR_METHOD + r"\s*\(", c.code):
+            return True
+    return False
+
+
+def _has_getter(c):
+    return bool(re.search(_FIELD, c.code)) and any(
+        re.fullmatch(r"get[A-Z]\w*", name) for _t, name, _p, _b in _methods(c.code))
+
+
+_NEW_OTHER_TYPE = re.compile(r"\b([A-Z]\w*)\s+\w+\s*=\s*new\s+(?!\1\b)[A-Z]\w*\s*\(")
+
+
+def _is_polymorphic(c):
+    return bool(_NEW_OTHER_TYPE.search(c.code)) or (
+        bool(re.search(r"@Override\b", c.code)) and bool(re.search(r"\b(?:extends|implements)\b", c.code)))
 
 
 def _all(*patterns):
@@ -103,7 +182,7 @@ TOPIC_RULES = {
     "main_method": _rx(r"public\s+static\s+void\s+main\s*\("),
     "println": _rx(r"System\s*\.\s*out\s*\.\s*print(?:ln|f)?\s*\("),
     "primitives": _rx(r"\b(?:int|long|double|float|boolean|char|byte|short)\s+\w+\s*(?:=|;|,)"),
-    "strings": lambda c: bool(re.search(r"\bString\b", c.code)) and bool(c.strings),
+    "strings": _uses_strings,
     "scanner": _rx(r"new\s+Scanner\s*\(\s*System\.in"),
     "operators": _rx(r"\w\s*[-+*/%]\s*\w", r"==|!=|<=|>=|&&|\|\|"),
     "comments": lambda c: c.has_comment,
@@ -125,14 +204,14 @@ TOPIC_RULES = {
     "class_new": _uses_own_class,
     "constructors": _has_constructor,
     "this_keyword": _rx(r"\bthis\b"),
-    "encapsulation": _all(_FIELD, r"\bget[A-Z]\w*\s*\("),
+    "encapsulation": _has_getter,
     "static_members": _rx(r"\bstatic\s+(?:final\s+)?[\w.<>\[\]]+\s+\w+\s*(?:=|;)"),
     "extends": _rx(r"\bclass\s+\w+(?:<[^>]*>)?\s+extends\s+\w+"),
     "super_call": _rx(r"\bsuper\s*(?:\(|\.)"),
     "override": _rx(r"@Override\b"),
     "abstract_class": _rx(r"\babstract\s+class\b"),
     "interfaces": _rx(r"\binterface\s+\w+", r"\bimplements\s+\w+"),
-    "polymorphism": _rx(r"\b([A-Z]\w*)\s+\w+\s*=\s*new\s+(?!\1\b)[A-Z]\w*\s*\("),
+    "polymorphism": _is_polymorphic,
     "try_catch": _rx(r"\bcatch\s*\("),
     "throw_throws": _rx(r"\bthrows?\s+\w+"),
     "custom_exception": _rx(r"class\s+\w+\s+extends\s+\w*(?:Exception|Error)\b"),
