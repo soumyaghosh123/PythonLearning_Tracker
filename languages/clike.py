@@ -27,6 +27,8 @@ def _regex_allowed(out: list) -> bool:
     text = "".join(out).rstrip()
     if not text:
         return True
+    if text.endswith("++") or text.endswith("--"):
+        return False  # postfix increment: a following '/' is division
     if text[-1] in _REGEX_PREV_CHARS:
         return True
     m = _TAIL_WORD.search(text)

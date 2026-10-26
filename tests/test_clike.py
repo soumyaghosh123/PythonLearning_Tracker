@@ -32,6 +32,20 @@ class ClikeTests(unittest.TestCase):
         self.assertTrue(tokenize("const h = a / b / c;", "javascript").syntax_ok)
         self.assertNotIn("while", tokenize("x = s.split(/[/]while/);", "javascript").code)
 
+    def test_division_kept_exactly(self):
+        js = lambda src: tokenize(src, "javascript")
+        self.assertEqual(js("const h = a / b / c;").code, "const h = a / b / c;")
+        self.assertIn("y / 2", js("x = y / 2; // c").code)
+        self.assertEqual(js("f(a)/2/3").code, "f(a)/2/3")
+        self.assertEqual(js("return /re/.test(s)").code, 'return "".test(s)')
+
+    def test_postfix_increment_then_division(self):
+        for src in ("i++ / 2; while(x){}", "n-- / 2; while(x){}"):
+            c = tokenize(src, "javascript")
+            self.assertIn("/ 2", c.code)
+            self.assertIn("while", c.code)
+            self.assertTrue(c.syntax_ok)
+
     def test_java_text_block(self):
         c = tokenize('String t = """\n  while "x"\n""";', "java")
         self.assertNotIn("while", c.code)
