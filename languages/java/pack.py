@@ -104,8 +104,7 @@ class JavaPack(LanguagePack):
                 env = _clean_env(JAVA_TOOL_OPTIONS=agent_token(jar), JAVATRACKER_PROPS=str(props))
                 result = subprocess.run([str(java_for(javac)), "-cp", str(out), "Hello"],
                                         capture_output=True, text=True, timeout=60, env=env)
-                noise = [l for l in result.stderr.splitlines()
-                         if l.strip() and not l.startswith("Picked up JAVA_TOOL_OPTIONS:")]
+                noise = _stderr_noise(result.stderr)
                 if result.returncode != 0 or noise:
                     return False, (noise or [f"java exited with code {result.returncode}"])[0]
                 runs = data / "java" / "runs.jsonl"
@@ -161,10 +160,15 @@ def java_for(javac):
 
 @lru_cache(maxsize=None)
 def javac_major(javac):
-    """8 for 'javac 1.8.0_511', 17 for 'javac 17.0.2' (Java 8 prints it on stderr)."""
+    # Java 8 prints its version on stderr, later ones on stdout.
     result = subprocess.run([str(javac), "-version"], capture_output=True, text=True, timeout=60,
                             env=_clean_env())
-    match = re.search(r"javac (\d+)(?:\.(\d+))?", result.stdout + result.stderr)
+    return parse_javac_version(result.stdout + result.stderr)
+
+
+def parse_javac_version(text):
+    """8 for 'javac 1.8.0_511', 11 for 'javac 11.0.22', 17 for 'javac 17', 25 for 'javac 25-ea'; 0 if unknown."""
+    match = re.search(r"javac (\d+)(?:\.(\d+))?", text)
     if not match:
         return 0
     major = int(match.group(1))
@@ -218,11 +222,22 @@ def write_properties(path, lang_config, data_dir, builtin=True):
     Path(path).write_text(text, encoding="utf-8")
 
 
+# Variables that add JVM options (and so may load agents or print notices) in our own child JVMs.
+_JVM_OPTION_VARS = ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS", "JAVATRACKER_PROPS")
+# The notices the JVM prints when one of them is set.
+_JVM_NOTICES = ("Picked up JAVA_TOOL_OPTIONS:", "Picked up _JAVA_OPTIONS:", "NOTE: Picked up JDK_JAVA_OPTIONS:")
+
+
 def _clean_env(**extra):
-    # Our own child JVMs must not pick up a JAVA_TOOL_OPTIONS agent from the parent.
-    env = {k: v for k, v in os.environ.items() if k not in ("JAVA_TOOL_OPTIONS", "JAVATRACKER_PROPS")}
+    env = {k: v for k, v in os.environ.items() if k not in _JVM_OPTION_VARS}
     env.update(extra)
     return env
+
+
+def _stderr_noise(stderr):
+    """stderr lines other than the JVM's own 'Picked up ...' notices."""
+    return [line for line in (stderr or "").splitlines()
+            if line.strip() and not line.startswith(_JVM_NOTICES)]
 
 
 def _first_line(result):

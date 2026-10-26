@@ -12,14 +12,37 @@ from tests import helpers  # noqa: F401  (sets up sys.path and PYTRACKER_HOME)
 from languages import get_pack
 from languages.java import pack as jpack
 
-JAVAC = jpack.find_javac()
-JAVA = jpack.java_for(JAVAC) if JAVAC else None
-JAVA_MAJOR = jpack.javac_major(JAVAC) if JAVAC else 0
+# TRACKER_TEST_JDK=<jdk folder> reruns the JDK tests against that JDK instead of find_javac()'s.
+TEST_JDK = os.environ.get("TRACKER_TEST_JDK")
+_EXE = ".exe" if os.name == "nt" else ""
+JAVAC = Path(TEST_JDK) / "bin" / f"javac{_EXE}" if TEST_JDK else jpack.find_javac()
+JAVA = jpack.java_for(JAVAC) if JAVAC and JAVAC.is_file() else None
+JAVA_MAJOR = jpack.javac_major(JAVAC) if JAVA else 0
 NEEDS_JDK = unittest.skipUnless(JAVAC and JAVA, "no JDK found")
 
 
+def use_test_jdk(cls):
+    """Make the pack (build_agent, self_test) use the same JDK as the tests."""
+    if TEST_JDK:
+        patcher = mock.patch.object(jpack, "find_javac", return_value=JAVAC)
+        patcher.start()
+        cls.addClassCleanup(patcher.stop)
+
+
+CLASSIFY = """import java.nio.file.*;
+public class Classify { public static void main(String[] a) throws Exception {
+  StringBuilder out = new StringBuilder();
+  for (String line : new String(Files.readAllBytes(Paths.get("cases.txt")), "UTF-8").split("\\n")) {
+    if (line.isEmpty()) continue;
+    int bar = line.indexOf('|');
+    out.append(TrackerAgent.mode(line.substring(bar + 1), Integer.parseInt(line.substring(0, bar)))).append('\\n');
+  }
+  Files.write(Paths.get("out.txt"), out.toString().getBytes("UTF-8")); } }
+"""
+
+
 def clean_env(**extra):
-    env = {k: v for k, v in os.environ.items() if k not in ("JAVA_TOOL_OPTIONS", "JAVATRACKER_PROPS")}
+    env = {k: v for k, v in os.environ.items() if k not in ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS", "JAVATRACKER_PROPS")}
     env.update(extra)
     return env
 
@@ -34,6 +57,7 @@ def read_jsonl(path):
 class AgentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        use_test_jdk(cls)
         cls.jar_dir = Path(tempfile.mkdtemp(prefix="jagent_"))
         cls.jar = jpack.build_agent(cls.jar_dir)
 
@@ -224,6 +248,68 @@ class AgentTests(unittest.TestCase):
         self.assertEqual((r.returncode, r.stderr), (0, ""))
         self.assertEqual(self.runs(), [])
 
+    def test_jar_classpath_entries_are_not_searched(self):
+        # Jars are skipped by name with no file-system work, even a folder that happens to be called x.jar.
+        project = self.code / "project"
+        self.project(project)
+        (project / "bin").rename(project / "classes.jar")
+        r = self.run_java("-cp", project / "classes.jar", "app.Main")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.runs(), [])
+
+    def test_command_line_classification(self):
+        cases = [
+            (8, "com.sun.tools.javac.Main Good.java", "compile"),
+            (17, "jdk.compiler/com.sun.tools.javac.Main -d out A.java", "compile"),
+            (11, "jdk.compiler/com.sun.tools.javac.launcher.Main Hello.java", "source:1"),
+            (21, "jdk.compiler/com.sun.tools.javac.launcher.Main Hello.java a b", "source:1"),
+            (22, "jdk.compiler/com.sun.tools.javac.launcher.SourceLauncher Hello.java", "source:1"),
+            (25, r"com.sun.tools.javac.launcher.SourceLauncher C:\My Code\Hello.java", "source:1"),
+            (8, "com.sun.tools.javac.launcher.Main Hello.java", "none"),
+            (8, "Hello.java", "none"),
+            (17, "Hello.java", "source:0"),
+            (17, r"C:\My Code\Hello.java x", "source:0"),
+            (17, "app.Main x.java", "class:app.Main"),
+            (17, "mymod/app.Main arg", "class:app.Main"),
+            (8, "app.Main", "class:app.Main"),
+            (8, "Hello", "class:Hello"),
+            (17, "org.eclipse.equinox.launcher.Main -os win32", "none"),
+            (21, "org.gradle.launcher.daemon.bootstrap.GradleDaemon 8.5", "none"),
+            (11, "org.codehaus.plexus.classworlds.launcher.Launcher compile", "none"),
+            (17, r"C:\tools\app.JAR --x", "none"),
+            (8, "", "none"),
+        ]
+        (self.code / "cases.txt").write_text("".join(f"{v}|{cmd}\n" for v, cmd, _ in cases), encoding="utf-8")
+        (self.code / "Classify.java").write_text(CLASSIFY, encoding="utf-8")
+        r = self.javac("-cp", self.jar, "Classify.java", agent=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = subprocess.run([str(JAVA), "-cp", f"{self.jar}{os.pathsep}.", "Classify"], cwd=self.code,
+                           capture_output=True, text=True, timeout=60, env=clean_env())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        got = (self.code / "out.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(list(zip([c for _, c, _ in cases], got)), [(c, m) for _, c, m in cases])
+
+    @unittest.skipUnless(JAVA_MAJOR >= 11, "single-file source launch needs Java 11+")
+    def test_source_launch_compile_error(self):
+        (self.code / "Bad.java").write_text("public class Bad { int x = ; }\n", encoding="utf-8")
+        self.assertNotEqual(self.run_java("Bad.java").returncode, 0)
+        [line] = self.runs()
+        self.assertEqual((line["status"], line["error"]), ("compile_error", None))
+
+    @unittest.skipUnless(JAVA_MAJOR >= 9, "modules need Java 9+")
+    def test_module_run_finds_source(self):
+        src = self.code / "src" / "app"
+        src.mkdir(parents=True)
+        (self.code / "src" / "module-info.java").write_text("module mymod {}\n", encoding="utf-8")
+        (src / "Main.java").write_text(
+            "package app;\npublic class Main { public static void main(String[] a) {} }\n", encoding="utf-8")
+        (self.code / "bin").mkdir()
+        r = self.javac("-d", "bin", self.code / "src" / "module-info.java", src / "Main.java", agent=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.run_java("-p", "bin", "-m", "mymod/app.Main").returncode, 0)
+        [line] = self.runs()
+        self.assertEqual(line["file"], str(src / "Main.java"))
+
     def test_jar_manifest_and_rebuild_is_identical(self):
         with zipfile.ZipFile(self.jar) as z:
             self.assertEqual(z.read("META-INF/MANIFEST.MF").decode(),
@@ -270,6 +356,30 @@ class FindJavacTests(unittest.TestCase):
         names = ["jdk-11.0.2", "jdk1.8.0_511", "jdk-21", "jdk-17.0.9.9-hotspot"]
         self.assertEqual(sorted(names, key=lambda n: jpack._version_key(Path(n))),
                          ["jdk1.8.0_511", "jdk-11.0.2", "jdk-17.0.9.9-hotspot", "jdk-21"])
+
+
+class VersionAndEnvTests(unittest.TestCase):
+    def test_parse_javac_version(self):
+        for text, major in [("javac 1.8.0_511", 8), ("javac 11.0.22", 11), ("javac 17", 17),
+                            ("javac 21.0.1", 21), ("javac 25-ea", 25), ("Picked up X\njavac 17.0.2", 17),
+                            ("nonsense", 0)]:
+            self.assertEqual(jpack.parse_javac_version(text), major, text)
+
+    def test_child_env_drops_all_jvm_option_variables(self):
+        with mock.patch.dict(os.environ, {"JAVA_TOOL_OPTIONS": "a", "_JAVA_OPTIONS": "b",
+                                          "JDK_JAVA_OPTIONS": "c", "JAVATRACKER_PROPS": "d"}):
+            env = jpack._clean_env(X="1")
+        # Compare names only, so a failure never prints the environment's values.
+        names = {"JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS", "JAVATRACKER_PROPS"}
+        self.assertEqual(sorted(names & set(env)), [])
+        self.assertEqual(env.get("X"), "1")
+
+    def test_jvm_notices_are_not_noise(self):
+        stderr = ("Picked up JAVA_TOOL_OPTIONS: -javaagent:C:/x.jar\n"
+                  "Picked up _JAVA_OPTIONS: -Xmx1g\n"
+                  "NOTE: Picked up JDK_JAVA_OPTIONS: -Xss2m\n\n")
+        self.assertEqual(jpack._stderr_noise(stderr), [])
+        self.assertEqual(jpack._stderr_noise(stderr + "Error: boom\n"), ["Error: boom"])
 
 
 class PackTests(unittest.TestCase):
@@ -369,6 +479,10 @@ class PackTests(unittest.TestCase):
 
 @NEEDS_JDK
 class SelfTestTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        use_test_jdk(cls)
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="jself_"))
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
@@ -384,6 +498,11 @@ class SelfTestTests(unittest.TestCase):
         self.assertNotIn("-javaagent", " ".join(java_call.args[0]))
         self.assertEqual(java_call.kwargs["env"]["JAVA_TOOL_OPTIONS"], jpack.agent_token(self.jar))
         self.assertEqual(live.read_text(encoding="utf-8"), "data_dir=untouched\n")
+
+    def test_self_test_ignores_users_java_options(self):
+        with mock.patch.dict(os.environ, {"_JAVA_OPTIONS": "-Xmx512m", "JDK_JAVA_OPTIONS": "-Xss4m"}):
+            ok, msg = get_pack("java").self_test({"exclude_folders": []}, jar_path=self.jar)
+        self.assertTrue(ok, msg)
 
     def test_broken_token_fails_and_install_skips_env(self):
         missing = self.tmp / "gone" / "tracker-agent.jar"

@@ -17,10 +17,12 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.security.ProtectionDomain;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -45,46 +47,74 @@ public class TrackerAgent {
             "--limit-modules", "--upgrade-module-path", "--system", "-Xmaxerrs", "-Xmaxwarns"));
 
     static volatile String error;      // simple name of the first uncaught exception (run mode)
+    static volatile boolean started;   // source launch: the learner's code got past compiling
+    static boolean watchStart;
     static long startMillis;
     static String dataDir;
     static List<String> excludes = new ArrayList<String>();
 
     public static void premain(String args, Instrumentation inst) {
         try {
-            start();
+            start(inst);
         } catch (Throwable t) {
             // never break the program
         }
     }
 
-    static void start() throws Exception {
+    static void start(Instrumentation inst) throws Exception {
         startMillis = System.currentTimeMillis();
-        List<String> tokens = split(System.getProperty("sun.java.command", ""));
+        String cmd = System.getProperty("sun.java.command", "");
+        String mode = mode(cmd, javaVersion());
+        // Settings are read only once a learner's source file has been found.
+        if (mode.equals("compile")) {
+            List<String> tokens = split(cmd);
+            compileMode(tokens.subList(1, tokens.size()));
+        } else if (mode.startsWith("source:")) {
+            if (sourceRun(split(cmd), Integer.parseInt(mode.substring(7))) && inst != null) {
+                // The launcher reports a compile error with System.exit(1): only a class defined by
+                // its in-memory loader shows the learner's code really started.
+                watchStart = true;
+                inst.addTransformer(new Starter(inst));
+            }
+        } else if (mode.startsWith("class:")) {
+            String main = mode.substring(6);
+            String first = split(cmd).get(0);
+            int slash = first.indexOf('/');
+            classRun(main, slash > 0 && !first.equals(main) ? first.substring(0, slash) : null);
+        }
+    }
+
+    /**
+     * What this JVM is, from sun.java.command alone (no file-system work): "compile",
+     * "source:<index of the file token>", "class:<main class>" or "none".
+     */
+    static String mode(String cmd, int javaVersion) {
+        List<String> tokens = split(cmd);
         if (tokens.isEmpty()) {
-            return;  // launched through JNI (e.g. eclipse.exe): not a learner's program
+            return "none";  // launched through JNI (e.g. eclipse.exe): not a learner's program
         }
         String first = tokens.get(0);
         String main = stripModule(first);
-        boolean sourceLaunch = javaVersion() >= 11;  // `java Foo.java` only exists from Java 11
-        // Settings are read only once a learner's source file has been found.
+        boolean sourceLaunch = javaVersion >= 11;  // `java Foo.java` only exists from Java 11
         if (main.equals("com.sun.tools.javac.Main")) {
-            compileMode(tokens.subList(1, tokens.size()));
-        } else if (main.startsWith("com.sun.tools.javac.launcher.")) {
-            // Java 11+ reports a source launch as the launcher class followed by the file.
-            if (sourceLaunch) {
-                sourceRun(tokens, 1);
-            }
-        } else if (ignored(main)) {
-            return;
-        } else if (first.toLowerCase(Locale.ROOT).endsWith(".java")) {
-            if (sourceLaunch) {
-                sourceRun(tokens, 0);  // before Java 11 the launch just fails: nothing to log
-            }
-        } else if (sourceLaunch && javaPathEnd(tokens, 0) > 0) {
-            sourceRun(tokens, 0);  // a .java path with spaces in it
-        } else {
-            classRun(main);
+            return "compile";
         }
+        if (main.startsWith("com.sun.tools.javac.launcher.")) {
+            // Java 11-21: ...launcher.Main <file>; 22+: ...launcher.SourceLauncher <file>.
+            return sourceLaunch && tokens.size() > 1 ? "source:1" : "none";
+        }
+        if (ignored(main)) {
+            return "none";
+        }
+        if (first.toLowerCase(Locale.ROOT).endsWith(".java")) {
+            return sourceLaunch ? "source:0" : "none";  // before Java 11 the launch just fails
+        }
+        // A .java path with spaces arrives split up; only an absolute path is worth rejoining.
+        if (sourceLaunch && (first.indexOf(':') >= 0 || first.startsWith("\\"))
+                && cmd.toLowerCase(Locale.ROOT).contains(".java")) {
+            return "source:0";
+        }
+        return "class:" + main;
     }
 
     // ---------- modes ----------
@@ -141,20 +171,36 @@ public class TrackerAgent {
         addHook(new Entry("javac", sources, classes));
     }
 
-    static void classRun(String main) throws Exception {
+    static void classRun(String main, String module) throws Exception {
         String rel = main.replace('.', '/');
-        String cp = System.getProperty("java.class.path", ".");
-        for (String part : cp.split(File.pathSeparator, -1)) {
-            File dir = absolute(part.isEmpty() ? "." : part);
-            // Only the folder that really holds the compiled class (otherwise the launch fails).
-            if (!new File(dir, rel + ".class").isFile()) {
+        List<String> dirs = new ArrayList<String>();
+        for (String part : System.getProperty("java.class.path", ".").split(File.pathSeparator, -1)) {
+            dirs.add(part.isEmpty() ? "." : part);
+        }
+        // `java -m mod/pkg.Main`: an exploded module is the module-path folder or a folder in it.
+        for (String part : System.getProperty("jdk.module.path", "").split(File.pathSeparator)) {
+            if (!part.isEmpty()) {
+                dirs.add(part);
+                if (module != null) {
+                    dirs.add(part + File.separator + module);
+                }
+            }
+        }
+        for (String part : dirs) {
+            String low = part.toLowerCase(Locale.ROOT);
+            // This runs in every JVM, so jars (often hundreds of them) are skipped by name alone.
+            if (low.endsWith(".jar") || low.endsWith(".zip") || low.endsWith("*")) {
                 continue;
             }
+            // Only the folder that really holds the compiled class (otherwise the launch fails).
+            if (!new File(part, rel + ".class").isFile()) {
+                continue;
+            }
+            File dir = absolute(part);
             List<File> candidates = new ArrayList<File>();
             candidates.add(dir);
             candidates.add(new File(dir, "../src"));
-            String low = dir.getPath().replace('\\', '/').toLowerCase(Locale.ROOT);
-            if (low.endsWith("target/classes")) {
+            if (dir.getPath().replace('\\', '/').toLowerCase(Locale.ROOT).endsWith("target/classes")) {
                 candidates.add(new File(dir, "../../src/main/java"));
             }
             candidates.add(new File(dir, "../src/main/java"));
@@ -170,15 +216,17 @@ public class TrackerAgent {
         }
     }
 
-    static void sourceRun(List<String> tokens, int from) throws Exception {
+    static boolean sourceRun(List<String> tokens, int from) throws Exception {
         if (from >= tokens.size()) {
-            return;
+            return false;
         }
         int end = javaPathEnd(tokens, from);
         File src = absolute(end > 0 ? join(tokens, from, end) : tokens.get(from));
         if (src.isFile() && loadSettings() && !excluded(src)) {
             startRun(src);
+            return true;
         }
+        return false;
     }
 
     static void startRun(File src) {
@@ -227,6 +275,35 @@ public class TrackerAgent {
                 System.err.print("Exception in thread \"" + t.getName() + "\" ");
                 e.printStackTrace(System.err);
             }
+        }
+    }
+
+    /**
+     * Installed only in a tracked source launch: notes the first class defined by a loader other
+     * than the boot, platform and application ones (the launcher's in-memory loader), then removes
+     * itself. It never changes a class (returns null).
+     */
+    static final class Starter implements ClassFileTransformer {
+        private final Instrumentation inst;
+        private final ClassLoader app = ClassLoader.getSystemClassLoader();
+        private final ClassLoader platform = app == null ? null : app.getParent();
+
+        Starter(Instrumentation inst) {
+            this.inst = inst;
+        }
+
+        public byte[] transform(ClassLoader loader, String className, Class<?> redefined,
+                                ProtectionDomain domain, byte[] bytes) {
+            try {
+                if (!started && loader != null && loader != app && loader != platform
+                        && !loader.getClass().getName().endsWith("DelegatingClassLoader")) {
+                    started = true;
+                    inst.removeTransformer(this);
+                }
+            } catch (Throwable t) {
+                // never break class loading
+            }
+            return null;
         }
     }
 
@@ -290,6 +367,10 @@ public class TrackerAgent {
             } else {
                 err = error;
                 status = err == null ? "success" : "error";
+                if (watchStart && !started) {
+                    status = "compile_error";  // the source launch never got past compiling
+                    err = null;
+                }
             }
             double duration = (System.currentTimeMillis() - startMillis) / 1000.0;
 
