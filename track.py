@@ -7,7 +7,9 @@ Run it any time to see where you are:
 import datetime as dt
 import json
 import os
+import sys
 import traceback
+import webbrowser
 from collections import Counter
 from pathlib import Path
 
@@ -384,7 +386,12 @@ def build_report(config=None, today=None):
 
 
 def main():
-    report = build_report()
+    from dashboard import write_dashboard, write_plan
+
+    config = load_config()
+    report = build_report(config)
+    write_plan(config)
+    path = write_dashboard(report)
     for rep in report["languages"].values():
         if "error" in rep:
             print(f"{rep['icon']} {rep['label']}: could not build the report ({rep['error']})")
@@ -393,6 +400,9 @@ def main():
         print(f"{rep['icon']} {rep['label']}: day {rep['day_number']} of {rep['total_days']} · "
               f"{rep['levels_done']}/{rep['curriculum_levels']} levels · "
               f"{'all levels complete!' if not cur else 'current: ' + cur['name']}")
+    print(f"Dashboard: {path}")
+    if "--no-open" not in sys.argv:
+        webbrowser.open(path.as_uri())
 
 
 if __name__ == "__main__":
