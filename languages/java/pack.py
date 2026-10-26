@@ -17,6 +17,7 @@ from pathlib import Path
 import settings
 from languages import envvars
 from languages.base import LanguagePack
+from languages.java import eclipse_scan
 from languages.java.analyzer import analyze_java
 
 AGENT_DIR = Path(__file__).parent / "agent"
@@ -115,12 +116,62 @@ class JavaPack(LanguagePack):
         except Exception as e:
             return False, f"self-test failed: {e}"
 
+    def collect(self, lang_config, data_dir, runs):
+        """Prune runs of newly excluded folders, then log Eclipse builds found in the workspaces."""
+        data_dir = Path(data_dir)
+        is_excluded = eclipse_scan.is_excluded_factory(lang_config)
+        if eclipse_scan.exclusions_changed(data_dir, lang_config):
+            eclipse_scan.prune_excluded(data_dir, is_excluded, lang_config.get("exclude_folders", []))
+            # Without this the installed agent keeps logging the folder that was just excluded.
+            props = AGENT_DIR / "agent.properties"
+            if props.is_file():
+                try:
+                    write_properties(props, lang_config, data_dir.parent, builtin=True)
+                except OSError:
+                    pass
+        workspaces, seen = [], set()
+        candidates = (eclipse_scan.recent_workspaces() + [Path(lang_config["code_folder"])]
+                      + [Path(p) for p in lang_config.get("extra_workspaces", [])])
+        for path in candidates:
+            try:
+                key = os.path.normcase(str(path.resolve()))
+            except OSError:
+                continue
+            if key not in seen and path.is_dir():
+                seen.add(key)
+                workspaces.append(path)
+        return eclipse_scan.scan_workspaces(workspaces, data_dir, runs, is_excluded)
+
+    def extra_report(self, runs):
+        """java_folders: the project folders worked in, newest first (top 15)."""
+        folders = {}
+        for run in runs:
+            day = run["dt"].date().isoformat()
+            files = {f.get("file") for f in run.get("files") or []} | {run.get("file")}
+            for file in files - {None, ""}:
+                entry = folders.setdefault(_source_root(file), {"files": set(), "last_seen": day})
+                entry["files"].add(file)
+                entry["last_seen"] = max(entry["last_seen"], day)
+        rows = [{"folder": folder, "files": len(v["files"]), "last_seen": v["last_seen"]}
+                for folder, v in folders.items()]
+        rows.sort(key=lambda r: (r["last_seen"], r["folder"]), reverse=True)
+        return {"java_folders": rows[:15]}
+
     def hook_installed(self):
         value = envvars.get_user_env("JAVA_TOOL_OPTIONS")
         try:
             return envvars._find(envvars._split(value), envvars._split(AGENT_TOKEN)) >= 0
         except ValueError:
             return False
+
+
+def _source_root(file):
+    """The folder above the first 'src' folder (the project), else the file's own folder."""
+    parts = Path(file).parts
+    for i, part in enumerate(parts):
+        if part.lower() == "src" and i > 0:
+            return str(Path(*parts[:i]))
+    return str(Path(file).parent)
 
 
 # ---------- finding a JDK and building the agent ----------

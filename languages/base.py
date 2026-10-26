@@ -45,5 +45,9 @@ class LanguagePack:
     def collect(self, lang_config, data_dir, runs):
         return []
 
+    def extra_report(self, runs):
+        """Language-specific additions merged into the language report (default: none)."""
+        return {}
+
     def hook_installed(self):
         return False

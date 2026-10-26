@@ -296,7 +296,7 @@ def build_language_report(key, config, today):
     scores = [r["analysis"]["score"] for r in latest.values()]
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0
 
-    return {
+    report = {
         "language": key, "label": pack.label, "icon": pack.icon, "editor": pack.editor,
         "curriculum_levels": len(curriculum["levels"]),
         "generated": dt.datetime.now().isoformat(timespec="minutes"),
@@ -336,6 +336,8 @@ def build_language_report(key, config, today):
         "saved_not_run": saved_not_run(lang_config["code_folder"], pack.extensions, runs, today),
         "_runs": runs,  # raw runs for the emailer (not shown on the dashboard)
     }
+    report.update(pack.extra_report(runs))  # e.g. Java's project folders
+    return report
 
 
 def build_report(config=None, today=None):
