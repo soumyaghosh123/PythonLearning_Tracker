@@ -1,11 +1,11 @@
-"""First-time setup for the Python Learning Tracker.
+"""First-time setup for the Learning Tracker (Python, Java, JavaScript).
 
     python tracker\\setup.py              # set up, or change settings (re-run any time)
     python tracker\\setup.py --uninstall  # stop tracking (keeps your data)
 
 It asks a few questions, then:
   1. saves config.json
-  2. installs the run logger (so every script you run in VS Code is logged)
+  2. installs each chosen language's hook (and removes the hooks of languages you dropped)
   3. schedules a daily Windows task that refreshes the dashboard and sends emails
   4. optionally sends a test email
   5. opens your full learning plan
@@ -13,17 +13,17 @@ It asks a few questions, then:
 
 import datetime as dt
 import getpass
+import json
 import re
-import site
 import subprocess
 import sys
 import webbrowser
 from pathlib import Path
 
-from settings import (CONFIG_PATH, DATA_DIR, DEFAULT_CONFIG, PASSWORD_ENV_VAR, TASK_NAME, TRACKER_DIR,
-                      load_config, load_curriculum, save_json)
+from languages import all_packs, get_pack
+from settings import (CONFIG_PATH, DATA_DIR, DEFAULT_CONFIG, OLD_TASK_NAME, PASSWORD_ENV_VAR, TASK_NAME,
+                      TRACKER_DIR, enabled_languages, load_config, load_json, save_json)
 
-LOGGER_MARKER = "Python Learning Tracker: run logger"
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
@@ -80,29 +80,26 @@ def check_time(text):
     return f"{int(hours):02d}:{minutes}"
 
 
+def parse_language_choice(text, current):
+    """'1,3' -> ['python', 'javascript'] in registry order; '' keeps `current`."""
+    if not text.strip():
+        return list(current)
+    packs = all_packs()
+    try:
+        numbers = {int(part) for part in text.split(",")}
+    except ValueError:
+        numbers = set()
+    if not numbers or not all(1 <= n <= len(packs) for n in numbers):
+        raise ValueError(f"Enter numbers 1-{len(packs)}, comma-separated")
+    return [p.key for i, p in enumerate(packs, 1) if i in numbers]
+
+
 def yes(question, default=True):
     answer = input(f"{question} [{'Y/n' if default else 'y/N'}]: ").strip().lower()
     return default if not answer else answer.startswith("y")
 
 
 # ---------- installing pieces ----------
-
-def install_logger(config):
-    target_dir = Path(site.getusersitepackages())
-    target = target_dir / "usercustomize.py"
-    if target.exists() and LOGGER_MARKER not in target.read_text(encoding="utf-8", errors="ignore"):
-        print(f"  ✗ {target} already exists and isn't ours, so the run logger was NOT installed.")
-        return False
-    code = (TRACKER_DIR / "run_logger.py").read_text(encoding="utf-8")
-    code = (code.replace("__DATA_DIR__", str(DATA_DIR))
-                .replace("__CODE_FOLDER__", config["code_folder"])
-                .replace("__TRACKER_DIR__", str(TRACKER_DIR)))
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target.write_text(code, encoding="utf-8")
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"  ✓ Run logger installed ({target})")
-    return True
-
 
 def powershell(script):
     return subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
@@ -116,7 +113,7 @@ def schedule_task(send_time):
 $action = New-ScheduledTaskAction -Execute '{exe}' -Argument '"{TRACKER_DIR / "send_report.py"}"' -WorkingDirectory '{TRACKER_DIR}'
 $trigger = New-ScheduledTaskTrigger -Daily -At '{send_time}'
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
-Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $trigger -Settings $settings -Description 'Python Learning Tracker: daily dashboard refresh and emails' -Force | Out-Null
+Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $action -Trigger $trigger -Settings $settings -Description 'Learning Tracker: daily dashboard refresh and emails' -Force | Out-Null
 """
     result = powershell(script)
     if result.returncode == 0:
@@ -136,43 +133,84 @@ def remove_password():
     set_user_env(PASSWORD_ENV_VAR, "")
 
 
+
+
 # ---------- main flows ----------
 
-def setup():
-    print("\n🐍 Python Learning Tracker: setup\n")
-    try:
-        config = load_config()
-        print("Existing settings found. Press Enter to keep the value in [brackets].\n")
-    except SystemExit:
-        config = {**DEFAULT_CONFIG, "email": dict(DEFAULT_CONFIG["email"]), "alerts": dict(DEFAULT_CONFIG["alerts"])}
-    curriculum = load_curriculum()
-    email = config["email"]
+HOOK_ENV_PACKS = ("javascript", "java")      # the packs whose hook lives in a user environment variable
 
-    config["learner_name"] = ask("Your name", config["learner_name"], check_name)
-    email["to"] = ask("Email(s) for reports (comma separated)", ", ".join(email["to"]), check_emails)
-    config["start_date"] = ask("Start date (YYYY-MM-DD)", config["start_date"] or dt.date.today().isoformat(), check_date)
 
-    print("\nChoose a plan:")
+def old_layout_on_disk():
+    """True when config.json still has the single-language layout (load_config will migrate it)."""
+    raw = load_json(CONFIG_PATH)
+    return isinstance(raw, dict) and ("languages" not in raw or any(k in raw for k in ("start_date", "plan", "code_folder")))
+
+
+def short_date(iso):
+    d = dt.date.fromisoformat(iso)
+    return f"{d.day} {d:%b}"
+
+
+def ask_language(pack, block):
+    """Ask the per-language questions and store the answers in `block`."""
+    print(f"\n── {pack.icon} {pack.label} ──")
+    block["start_date"] = ask("Start date (YYYY-MM-DD)", block.get("start_date") or dt.date.today().isoformat(),
+                              check_date)
+    curriculum = pack.curriculum()
     keys = list(curriculum["plans"])
+    print("Choose a plan:")
     for i, key in enumerate(keys, 1):
         plan = curriculum["plans"][key]
         total = sum(level["days"][key] for level in curriculum["levels"])
         print(f"  {i}) {plan['icon']} {plan['label']:<11} {total} days · {plan['daily_effort']}")
-    default_plan = str(keys.index(config["plan"]) + 1) if config["plan"] in keys else "1"
+    default_plan = str(keys.index(block["plan"]) + 1) if block.get("plan") in keys else "1"
 
     def check_plan(text):
         if text not in [str(i) for i in range(1, len(keys) + 1)]:
             raise ValueError(f"Enter a number from 1 to {len(keys)}.")
         return keys[int(text) - 1]
-    config["plan"] = ask("Plan", default_plan, check_plan)
+    block["plan"] = ask("Plan", default_plan, check_plan)
 
     def check_folder(text):
         if not Path(text).is_dir():
             raise ValueError("That folder doesn't exist.")
         return str(Path(text).resolve())
-    config["code_folder"] = ask("\nFolder where you write your Python code", config["code_folder"], check_folder)
+    prompt = "Code folder (your Eclipse workspace)" if pack.key == "java" else "Code folder"
+    block["code_folder"] = ask(prompt, block["code_folder"], check_folder)
 
-    email["send_days"] = ask("Progress email days", ",".join(d[:3] for d in email["send_days"]), check_days)
+
+def setup():
+    print("\n📚 Learning Tracker: setup\n")
+    # A migrated config loads as python-enabled, so the Python logger is reinstalled below
+    # and starts writing to data/python/.
+    migrated = old_layout_on_disk()
+    try:
+        config = load_config()
+        print("Existing settings found. Press Enter to keep the value in [brackets].\n")
+        if migrated:
+            print("Your settings were upgraded to the multi-language layout.\n")
+    except SystemExit:
+        config = json.loads(json.dumps(DEFAULT_CONFIG))
+    email = config["email"]
+
+    config["learner_name"] = ask("Your name", config["learner_name"], check_name)
+    email["to"] = ask("Email(s) for reports (comma separated)", ", ".join(email["to"]), check_emails)
+
+    packs = all_packs()
+    current = enabled_languages(config) or ["python"]
+    print("\nWhich languages are you learning?")
+    for i, pack in enumerate(packs, 1):
+        print(f"  {i}) {pack.icon} {pack.label} ({pack.editor})")
+    default_choice = ",".join(str(i) for i, p in enumerate(packs, 1) if p.key in current)
+    chosen = ask("Languages (numbers, comma-separated)", default_choice, lambda t: parse_language_choice(t, current))
+
+    for pack in packs:
+        block = config["languages"][pack.key]
+        block["enabled"] = pack.key in chosen
+        if block["enabled"]:
+            ask_language(pack, block)
+
+    email["send_days"] = ask("\nProgress email days", ",".join(d[:3] for d in email["send_days"]), check_days)
     email["send_time"] = ask("Time to check and send emails (24h)", email["send_time"], check_time)
 
     # Gmail sending
@@ -195,13 +233,27 @@ def setup():
     if password:
         store_password(password)
         print(f"  ✓ App Password stored in your Windows user environment ({PASSWORD_ENV_VAR})")
-    install_logger(config)
+
+    env_before = {k: get_pack(k).hook_installed() for k in HOOK_ENV_PACKS}
+    for pack in packs:
+        try:
+            if pack.key in chosen:
+                # install() already self-tests the hooks that change an environment variable.
+                ok, message = pack.install(config["languages"][pack.key], DATA_DIR)
+                print(f"  {'✓' if ok else '✗'} {pack.icon} {message}")
+            elif pack.hook_installed():
+                print(f"  ✓ {pack.icon} {pack.uninstall()} (your data is kept)")
+        except Exception as error:
+            print(f"  ✗ {pack.icon} {pack.label}: {error}")
     schedule_task(email["send_time"])
+    powershell(f"Unregister-ScheduledTask -TaskName '{OLD_TASK_NAME}' -Confirm:$false")   # old name; may not exist
+    if any(get_pack(k).hook_installed() != env_before[k] for k in HOOK_ENV_PACKS):
+        print("  ↻ Restart Eclipse and VS Code once so they pick up the tracker.")
 
     from dashboard import write_dashboard, write_plan
     from track import build_report
-    report = build_report(config, curriculum)
-    plan_path = write_plan(config, curriculum)
+    report = build_report(config)
+    plan_path = write_plan(config)
     write_dashboard(report)
 
     if email["enabled"] and yes("Send a test email now?", default=True):
@@ -214,20 +266,24 @@ def setup():
             print(f"  ✗ Test email failed: {error}")
             print("    Check the Gmail address and App Password, then re-run setup.py.")
 
-    print(f"\n✅ All set! Your {curriculum['plans'][config['plan']]['label']} plan runs "
-          f"{report['start_date']} → {report['planned_finish']}.")
-    print("   Write and run code in your folder as usual; it's tracked automatically.")
-    print("   Refresh the dashboard any time with:  python tracker\\track.py\n")
+    summary = " · ".join(
+        f"{p.icon} {p.label} ({p.curriculum()['plans'][config['languages'][p.key]['plan']]['label']}) "
+        f"from {short_date(config['languages'][p.key]['start_date'])}" for p in packs if p.key in chosen)
+    print(f"\n✅ All set! {summary}")
+    print("   Write and run code in your folders as usual; it's tracked automatically.")
+    print("   Refresh the dashboard any time with:  python tracker\track.py\n")
     webbrowser.open(plan_path.as_uri())
 
 
 def uninstall():
-    target = Path(site.getusersitepackages()) / "usercustomize.py"
-    if target.exists() and LOGGER_MARKER in target.read_text(encoding="utf-8", errors="ignore"):
-        target.unlink()
-        print("  ✓ Run logger removed")
-    result = powershell(f"Unregister-ScheduledTask -TaskName '{TASK_NAME}' -Confirm:$false")
-    print("  ✓ Daily task removed" if result.returncode == 0 else "  - No daily task found")
+    for pack in all_packs():
+        try:
+            print(f"  ✓ {pack.icon} {pack.uninstall()}")
+        except Exception as error:
+            print(f"  ✗ {pack.icon} {pack.label}: {error}")
+    for name in (TASK_NAME, OLD_TASK_NAME):
+        result = powershell(f"Unregister-ScheduledTask -TaskName '{name}' -Confirm:$false")
+        print(f"  ✓ Daily task '{name}' removed" if result.returncode == 0 else f"  - No task '{name}' found")
     remove_password()
     print("  ✓ App Password removed")
     print(f"Your data and config are still in {TRACKER_DIR}")
