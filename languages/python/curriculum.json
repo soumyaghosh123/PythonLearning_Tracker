@@ -1,4 +1,7 @@
 {
+  "language": "python",
+  "editor": "VS Code",
+  "extensions": [".py"],
   "plans": {
     "standard": {
       "label": "Standard",
