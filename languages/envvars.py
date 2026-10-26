@@ -61,13 +61,41 @@ def remove_token(value, token):
     return " ".join(tokens)
 
 
-def get_user_env(name):
+def remove_tokens_matching(value, matcher):
+    """Remove every run of tokens `matcher(tokens, i)` recognises; it returns the run length (0 = no match).
+
+    Unrelated options and the user's spacing are left alone when nothing matches.
+    """
+    try:
+        tokens = _split(value)
+    except ValueError:
+        return value or ""
+    kept, i, removed = [], 0, False
+    while i < len(tokens):
+        n = matcher(tokens, i)
+        if n:
+            i += n
+            removed = True
+        else:
+            kept.append(tokens[i])
+            i += 1
+    return " ".join(kept) if removed else (value or "")
+
+
+def _read_user_env(name):
+    """(value, is_text): (None, True) when unset, is_text False for REG_DWORD / REG_MULTI_SZ values."""
     import winreg
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_READ) as key:
-            return winreg.QueryValueEx(key, name)[0]
+            value = winreg.QueryValueEx(key, name)[0]
     except OSError:
-        return None
+        return None, True
+    return (value, True) if isinstance(value, str) else (None, False)
+
+
+def get_user_env(name):
+    """The variable's text, or None when it is unset or isn't a text value we can manage."""
+    return _read_user_env(name)[0]
 
 
 def _broadcast_change():
@@ -99,7 +127,9 @@ def set_user_env(name, value):
 
 
 def user_env_add(name, token):
-    current = get_user_env(name)
+    current, is_text = _read_user_env(name)
+    if not is_text:
+        return False  # a non-text value isn't ours to rewrite
     new = add_token(current, token)
     if new == (current or ""):
         return False
@@ -112,6 +142,18 @@ def user_env_remove(name, token):
     if current is None:
         return False
     new = remove_token(current, token)
+    if new == current:
+        return False
+    set_user_env(name, new)
+    return True
+
+
+def user_env_remove_matching(name, matcher):
+    """Remove the token runs `matcher` recognises (see remove_tokens_matching) from a user variable."""
+    current = get_user_env(name)
+    if current is None:
+        return False
+    new = remove_tokens_matching(current, matcher)
     if new == current:
         return False
     set_user_env(name, new)

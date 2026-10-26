@@ -42,6 +42,21 @@ def agent_token(jar_path):
 AGENT_TOKEN = agent_token(JAR_PATH)
 
 
+def _tracker_agent_matcher(keep=None):
+    """Matches any `-javaagent:<...>/tracker-agent.jar`: ours, or one left by a moved tracker folder."""
+    def match(tokens, i):
+        token = tokens[i]
+        if not token.startswith("-javaagent:"):
+            return 0
+        path = token[len("-javaagent:"):].strip('"').split("=", 1)[0].replace("\\", "/").lower()
+        if not (path == JAR_NAME or path.endswith("/" + JAR_NAME)):
+            return 0
+        if token == keep:
+            return 0
+        return 1
+    return match
+
+
 class JavaPack(LanguagePack):
     key = "java"
     label = "Java"
@@ -72,11 +87,14 @@ class JavaPack(LanguagePack):
         if not ok:
             envvars.user_env_remove("JAVA_TOOL_OPTIONS", agent_token(jar))
             return False, f"Java agent not installed: {message}"
-        envvars.user_env_add("JAVA_TOOL_OPTIONS", agent_token(jar))
+        # An agent left by a moved tracker folder would break every JVM: drop it, keep the current one.
+        current = agent_token(jar)
+        envvars.user_env_remove_matching("JAVA_TOOL_OPTIONS", _tracker_agent_matcher(keep=current))
+        envvars.user_env_add("JAVA_TOOL_OPTIONS", current)
         return True, "Java agent installed"
 
     def uninstall(self):
-        removed = envvars.user_env_remove("JAVA_TOOL_OPTIONS", AGENT_TOKEN)
+        removed = envvars.user_env_remove_matching("JAVA_TOOL_OPTIONS", _tracker_agent_matcher())
         return "Java agent removed" if removed else "Java agent was not set"
 
     def self_test(self, lang_config, data_dir=None, jar_path=None):

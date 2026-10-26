@@ -94,11 +94,15 @@ When it finishes you should see a line for each step, for example:
 ✓ Saved C:\Python\tracker\config.json
 ✓ App Password stored in your Windows user environment (PYTRACKER_GMAIL_APP_PASSWORD)
 ✓ 🐍 Run logger installed (...\site-packages\usercustomize.py)
-✓ ☕ Java agent installed ...
-✓ 🟨 JavaScript hook installed ...
-✓ Daily task 'LearningTracker' scheduled at 08:00
+✓ ☕ Java agent installed
+✓ 🟨 Node hook installed
+✓ Daily task 'LearningTracker' scheduled at 08:00 (runs later if the PC was off)
 ↻ Restart Eclipse and VS Code once so they pick up the tracker.
 ✓ Test email sent to you@gmail.com
+
+✅ All set! 🐍 Python (Standard) from 25 Oct · ☕ Java (Standard) from 25 Oct · 🟨 JavaScript (Standard) from 25 Oct
+   Write and run code in your folders as usual; it's tracked automatically.
+   Refresh the dashboard any time with:  python tracker\track.py
 ```
 
 A ✗ line says what went wrong and how to fix it. Your learning plan (`plan.html`) then opens in the browser.
@@ -456,8 +460,8 @@ Every step of every hook is wrapped so it can never break your programs.
 | **"Picked up JAVA_TOOL_OPTIONS: ..." appears in the console** | Expected. The Java runtime prints it once for every Java program when the tracker's agent is installed. It's harmless. |
 | **Node run not logged** | Restart VS Code. In a new terminal run `echo %NODE_OPTIONS%`; it should contain `node_hook.js`. Check the script is inside the JavaScript `code_folder`. |
 | **A work folder shows in "Java sources found in"** | Add that folder to `languages.java.exclude_folders` in `config.json`. On the next refresh it disappears and its past entries and snapshots are removed. |
-| **Every `node` program fails with `Cannot find module ... node_hook.js`** | The tracker folder was moved or deleted while its hook was still installed. Remove the tracker part (`--require ...node_hook.js`) from `NODE_OPTIONS`: Windows **Settings → System → About → Advanced system settings → Environment Variables**, under *User variables*. Or put the tracker back at `C:\Python\tracker` and re-run `python tracker\setup.py`. |
-| **Every Java program fails with `Error occurred during initialization of VM` or `agent library failed to init`** | Same cause. Remove the tracker part (`-javaagent:...tracker-agent.jar`) from `JAVA_TOOL_OPTIONS` in the same Environment Variables window, or re-run `python tracker\setup.py`. |
+| **Every `node` program fails with `Cannot find module ... node_hook.js`** | The tracker folder was moved or deleted while its hook was still installed. Remove the tracker part (`--require ...node_hook.js`) from `NODE_OPTIONS`: Windows **Settings → System → About → Advanced system settings → Environment Variables**, under *User variables*. Or put the tracker folder back where it was and run `python tracker\setup.py --uninstall`. (Re-running `setup.py` from the tracker's current folder also replaces an old tracker entry with the right one.) |
+| **Every Java program fails with `Error occurred during initialization of VM` or `agent library failed to init`** | Same cause. Remove the tracker part (`-javaagent:...tracker-agent.jar`) from `JAVA_TOOL_OPTIONS` in the same Environment Variables window. Or put the tracker folder back where it was and run `python tracker\setup.py --uninstall`. (Re-running `setup.py` from the tracker's current folder also replaces an old tracker entry with the right one.) |
 | **Topic not ticked** | It must be in code that **counted** (a run that succeeded or compiled). Try `python tracker\analyzer.py file` to see which topics are detected. |
 | **Test email: "Connection unexpectedly closed"** | Usually a malformed password (e.g. pasted twice). Re-run setup and paste once; an App Password is 16 letters. |
 | **"Username and Password not accepted"** | The App Password doesn't match `email.sender`, or it was deleted. Create a new one and re-run setup. |

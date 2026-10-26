@@ -135,6 +135,37 @@ class SetupFlowTests(unittest.TestCase):
         self.assertFalse(missing.exists())
         self.assertEqual(packs[1].calls[0][1], str(missing.resolve()))
 
+    def test_missing_javascript_default_folder_is_created_not_a_loop(self):
+        missing = Path(tempfile.mkdtemp(prefix="setup_js_")) / "JavaScript"
+        config = {"learner_name": "Sam", "email": {"to": ["sam@example.com"]},
+                  "languages": {"javascript": {"code_folder": str(missing)}}}
+        packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]
+        # name, email, languages, js(date, plan, folder=Enter, create=Enter), days, time, no email
+        answers = ["", "", "3", "", "", "", "", "", "", "n"]
+        self.run_setup(answers, packs, config=config)
+        self.assertTrue(missing.is_dir())
+        self.assertEqual(packs[2].calls, [("install", str(missing.resolve()), setup.DATA_DIR)])
+
+    def test_missing_python_folder_kept_when_not_created(self):
+        missing = Path(tempfile.mkdtemp(prefix="setup_py_")) / "newcode"
+        config = {"learner_name": "Sam", "email": {"to": ["sam@example.com"]},
+                  "languages": {"python": {"code_folder": str(missing)}}}
+        packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]
+        answers = ["", "", "1", "", "", "", "n", "", "", "n"]
+        self.run_setup(answers, packs, config=config)
+        self.assertFalse(missing.exists())
+        self.assertEqual(packs[0].calls[0][1], str(missing.resolve()))
+
+    def test_raising_hook_installed_does_not_crash_setup(self):
+        class Boom(FakePack):
+            def hook_installed(self):
+                raise OSError("registry unreadable")
+        code = tempfile.mkdtemp(prefix="setup_code_")
+        packs = [FakePack("python"), Boom("java"), FakePack("javascript")]
+        answers = ["Sam", "sam@example.com", "1", "2026-10-25", "", code, "", "", "n"]
+        _, out, _, _ = self.run_setup(answers, packs)
+        self.assertIn("All set!", out)
+
     def test_no_restart_message_when_environment_unchanged(self):
         code = tempfile.mkdtemp(prefix="setup_code_")
         packs = [FakePack("python"), FakePack("java"), FakePack("javascript")]

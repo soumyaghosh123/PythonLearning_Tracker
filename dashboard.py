@@ -473,7 +473,7 @@ function render() {
   const mine = !!mineCfg && plan === mineCfg.plan && st.start === mineCfg.start;
   $('toggle').innerHTML = Object.entries(cur.plans).map(([k, p]) =>
     `<button class="${k === plan ? 'on ' + esc(k) : ''}" data-plan="${esc(k)}">${esc(p.icon)} ${esc(p.label)}${mineCfg && k === mineCfg.plan ? ' (yours)' : ''}</button>`).join('');
-  $('note').innerHTML = mine ? '✅ This is <b>your</b> plan.' : '👀 Preview only. To switch, edit <b>plan</b> / <b>start_date</b> in config.json or re-run setup.py.';
+  $('note').innerHTML = !mineCfg ? '👀 Preview only. To learn it, re-run python tracker\\setup.py and choose it.' : mine ? '✅ This is <b>your</b> plan.' : '👀 Preview only. To switch, edit <b>plan</b> / <b>start_date</b> in config.json or re-run setup.py.';
 
   const start = new Date((st.start || iso(new Date())) + 'T00:00');
   const levels = cur.levels;

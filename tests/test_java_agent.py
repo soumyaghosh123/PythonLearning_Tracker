@@ -398,6 +398,7 @@ class PackTests(unittest.TestCase):
         pack = get_pack("java")
         with mock.patch.object(jpack.envvars, "user_env_add") as add, \
                 mock.patch.object(jpack.envvars, "user_env_remove") as rem, \
+                mock.patch.object(jpack.envvars, "user_env_remove_matching"), \
                 mock.patch.object(jpack, "find_javac", return_value=Path("javac.exe")), \
                 mock.patch.object(jpack, "build_agent", side_effect=self.fake_build), \
                 mock.patch.object(pack, "self_test", return_value=self_test_result) as st:
@@ -422,6 +423,42 @@ class PackTests(unittest.TestCase):
         result, add, rem, _ = self.install((True, "ok"))
         self.assertEqual(result, (True, "Java agent installed"))
         add.assert_called_once_with("JAVA_TOOL_OPTIONS", token)
+
+    def fake_registry(self, start):
+        store = {"JAVA_TOOL_OPTIONS": start}
+        for p in (mock.patch.object(jpack.envvars, "get_user_env", lambda n: store.get(n)),
+                  mock.patch.object(jpack.envvars, "set_user_env", lambda n, v: store.__setitem__(n, v)),
+                  mock.patch.object(jpack.envvars, "_read_user_env", lambda n: (store.get(n), True))):
+            p.start()
+            self.addCleanup(p.stop)
+        return store
+
+    def install_into(self, store_value):
+        store = self.fake_registry(store_value)
+        pack = get_pack("java")
+        with mock.patch.object(jpack, "find_javac", return_value=Path("javac.exe")), \
+                mock.patch.object(jpack, "build_agent", side_effect=self.fake_build), \
+                mock.patch.object(pack, "self_test", return_value=(True, "ok")):
+            pack.install_with_jar_path(self.jar, self.cfg, Path(r"D:\data"))
+        return store["JAVA_TOOL_OPTIONS"]
+
+    def test_install_replaces_stale_agent_token(self):
+        old = "-javaagent:C:/old/tracker/languages/java/agent/tracker-agent.jar"
+        self.assertEqual(self.install_into("-Xmx1g " + old), "-Xmx1g " + jpack.agent_token(self.jar))
+
+    def test_install_keeps_other_javaagents(self):
+        value = "-javaagent:C:/tools/profiler.jar -javaagent:C:/old/tracker-agent.jar"
+        self.assertEqual(self.install_into(value),
+                         "-javaagent:C:/tools/profiler.jar " + jpack.agent_token(self.jar))
+
+    def test_install_twice_keeps_one_token(self):
+        once = self.install_into("-Xmx1g")
+        self.assertEqual(self.install_into(once), "-Xmx1g " + jpack.agent_token(self.jar))
+
+    def test_uninstall_removes_stale_agent_token_too(self):
+        store = self.fake_registry("-Xmx1g -javaagent:C:/old/x/tracker-agent.jar " + jpack.AGENT_TOKEN)
+        self.assertEqual(get_pack("java").uninstall(), "Java agent removed")
+        self.assertEqual(store["JAVA_TOOL_OPTIONS"], "-Xmx1g")
 
     def test_install_writes_properties(self):
         self.install((True, "ok"))
@@ -459,9 +496,9 @@ class PackTests(unittest.TestCase):
         self.assertEqual(jpack.JAR_PATH, jpack.PACK.dir / "agent" / "tracker-agent.jar")
 
     def test_uninstall_removes_token(self):
-        with mock.patch.object(jpack.envvars, "user_env_remove", return_value=True) as rem:
+        with mock.patch.object(jpack.envvars, "user_env_remove_matching", return_value=True) as rem:
             self.assertEqual(get_pack("java").uninstall(), "Java agent removed")
-        rem.assert_called_once_with("JAVA_TOOL_OPTIONS", jpack.AGENT_TOKEN)
+        self.assertEqual(rem.call_args.args[0], "JAVA_TOOL_OPTIONS")
 
     def test_hook_installed_reads_user_env(self):
         pack = get_pack("java")

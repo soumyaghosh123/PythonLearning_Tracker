@@ -97,11 +97,49 @@ class PackTests(unittest.TestCase):
             add.assert_not_called()
             rem.assert_called_once_with("NODE_OPTIONS", jspack.HOOK_TOKEN)
         with mock.patch.object(jspack.envvars, "user_env_add") as add, \
+                mock.patch.object(jspack.envvars, "user_env_remove_matching"), \
                 mock.patch.object(jspack.shutil, "which", return_value="node"), \
                 mock.patch.object(pack, "self_test", return_value=(True, "ok")), \
                 self.hook_json():
             self.assertEqual(pack.install(cfg, Path("D")), (True, "Node hook installed"))
             add.assert_called_once_with("NODE_OPTIONS", jspack.HOOK_TOKEN)
+
+    def fake_registry(self, start):
+        """Patch the pack's envvars so a dict stands in for the user variable (never the registry)."""
+        store = {"NODE_OPTIONS": start}
+        for p in (mock.patch.object(jspack.envvars, "get_user_env", lambda n: store.get(n)),
+                  mock.patch.object(jspack.envvars, "set_user_env", lambda n, v: store.__setitem__(n, v)),
+                  mock.patch.object(jspack.envvars, "_read_user_env", lambda n: (store.get(n), True))):
+            p.start()
+            self.addCleanup(p.stop)
+        return store
+
+    def install_ok(self, pack):
+        with mock.patch.object(jspack.shutil, "which", return_value="node"), \
+                mock.patch.object(pack, "self_test", return_value=(True, "ok")), self.hook_json():
+            return pack.install({"code_folder": "C:\\x"}, Path("D"))
+
+    def test_install_replaces_stale_tracker_token(self):
+        store = self.fake_registry('--max-old-space-size=4096 --require "C:/old/tracker/languages/javascript/node_hook.js"')
+        self.assertTrue(self.install_ok(get_pack("javascript"))[0])
+        self.assertEqual(store["NODE_OPTIONS"], "--max-old-space-size=4096 " + jspack.HOOK_TOKEN)
+
+    def test_install_removes_unquoted_stale_and_keeps_other_requires(self):
+        store = self.fake_registry('--require C:/old/node_hook.js --require "C:/mine/other.js"')
+        self.install_ok(get_pack("javascript"))
+        self.assertEqual(store["NODE_OPTIONS"], '--require "C:/mine/other.js" ' + jspack.HOOK_TOKEN)
+
+    def test_install_twice_keeps_one_token(self):
+        store = self.fake_registry("--max-old-space-size=4096")
+        pack = get_pack("javascript")
+        self.install_ok(pack)
+        self.install_ok(pack)
+        self.assertEqual(store["NODE_OPTIONS"], "--max-old-space-size=4096 " + jspack.HOOK_TOKEN)
+
+    def test_uninstall_removes_stale_tracker_token_too(self):
+        store = self.fake_registry('-a --require "C:/old/x/node_hook.js" ' + jspack.HOOK_TOKEN + ' -b')
+        self.assertEqual(get_pack("javascript").uninstall(), "Node hook removed")
+        self.assertEqual(store["NODE_OPTIONS"], "-a -b")
 
     def test_install_without_node(self):
         pack = get_pack("javascript")
@@ -126,9 +164,9 @@ class PackTests(unittest.TestCase):
                 add.assert_not_called()
 
     def test_uninstall_removes_token(self):
-        with mock.patch.object(jspack.envvars, "user_env_remove", return_value=True) as rem:
+        with mock.patch.object(jspack.envvars, "user_env_remove_matching", return_value=True) as rem:
             get_pack("javascript").uninstall()
-        rem.assert_called_once_with("NODE_OPTIONS", jspack.HOOK_TOKEN)
+        self.assertEqual(rem.call_args.args[0], "NODE_OPTIONS")
 
     def test_hook_installed_reads_user_env(self):
         pack = get_pack("javascript")

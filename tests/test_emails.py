@@ -202,7 +202,7 @@ class EmailTests(unittest.TestCase):
 
     def saved_run(self, name, ok):
         analysis = {"lines": 7, "score": 3, "level": "Beginner", "syntax_ok": ok, "topics": []}
-        return {"status": "saved", "analysis": analysis, "file": "C:\w\\" + name, "dt": dt.datetime(2026, 10, 20, 10, 0)}
+        return {"status": "saved", "analysis": analysis, "file": "C:\\w\\" + name, "dt": dt.datetime(2026, 10, 20, 10, 0)}
 
     def test_files_table_uses_engine_counting_rule(self):
         report = self.report()

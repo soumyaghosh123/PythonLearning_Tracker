@@ -171,20 +171,23 @@ def ask_language(pack, block):
         return keys[int(text) - 1]
     block["plan"] = ask("Plan", default_plan, check_plan)
 
-    java = pack.key == "java"      # Java is tracked anywhere, so a missing workspace is not an error
-
-    def check_folder(text):
-        if not java and not Path(text).is_dir():
-            raise ValueError("That folder doesn't exist.")
-        return str(Path(text).resolve())
-    prompt = "Code folder (your Eclipse workspace)" if java else "Code folder"
-    block["code_folder"] = ask(prompt, block["code_folder"], check_folder)
+    # A missing folder is not an error (a default like C:\JavaScript may not exist yet): offer to create it.
+    prompt = "Code folder (your Eclipse workspace)" if pack.key == "java" else "Code folder"
+    block["code_folder"] = ask(prompt, block["code_folder"], lambda text: str(Path(text).resolve()))
     folder = Path(block["code_folder"])
-    if java and not folder.is_dir() and yes("That folder doesn't exist yet. Create it now?", default=True):
+    if not folder.is_dir() and yes("That folder doesn't exist yet. Create it now?", default=True):
         try:
             folder.mkdir(parents=True, exist_ok=True)
         except OSError as error:
             print(f"  ✗ Could not create it: {error}")
+
+
+def _hook_state(key):
+    """Whether a pack's hook is installed; an unreadable environment counts as 'not installed'."""
+    try:
+        return get_pack(key).hook_installed()
+    except Exception:
+        return False
 
 
 def setup():
@@ -242,7 +245,7 @@ def setup():
         store_password(password)
         print(f"  ✓ App Password stored in your Windows user environment ({PASSWORD_ENV_VAR})")
 
-    env_before = {k: get_pack(k).hook_installed() for k in HOOK_ENV_PACKS}
+    env_before = {k: _hook_state(k) for k in HOOK_ENV_PACKS}
     for pack in packs:
         try:
             if pack.key in chosen:
@@ -257,7 +260,7 @@ def setup():
         powershell(f"Unregister-ScheduledTask -TaskName '{OLD_TASK_NAME}' -Confirm:$false")   # old name; may not exist
     else:
         print(f"  - Kept the old task '{OLD_TASK_NAME}' so you still get your daily refresh.")
-    if any(get_pack(k).hook_installed() != env_before[k] for k in HOOK_ENV_PACKS):
+    if any(_hook_state(k) != env_before[k] for k in HOOK_ENV_PACKS):
         print("  ↻ Restart Eclipse and VS Code once so they pick up the tracker.")
 
     from dashboard import write_dashboard, write_plan

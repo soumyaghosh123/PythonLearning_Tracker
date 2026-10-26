@@ -45,6 +45,11 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(data["mine"]["python"]["start"], "2026-10-01")
         self.assertEqual(data["courses"]["java"]["editor"], "Eclipse")
 
+    def test_plan_note_for_language_not_enabled_points_to_setup(self):
+        html = self.dashboard.write_plan(self.config, self.home / "p.html").read_text(encoding="utf-8")
+        self.assertIn(r"To learn it, re-run python tracker\\setup.py and choose it.", html)   # JS source escapes the backslash
+        self.assertIn("Preview only. To switch, edit", html)   # enabled-language wording is kept
+
     def test_script_close_tag_escaped(self):
         write_runs(self.home / "data" / "python" / "runs.jsonl", [
             {"time": "2026-10-02T10:00:00", "file": r"C:\Python.py", "status": "error", "error": "</script><b>",

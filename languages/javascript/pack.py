@@ -19,6 +19,27 @@ HOOK_TOKEN = '--require "' + str(HOOK_PATH).replace("\\", "/") + '"'
 HOOK_JSON = HOOK_PATH.with_name("hook.json")
 
 
+def _tracker_hook_matcher(keep_current):
+    """Matches any `--require <...>/node_hook.js` (quoted or not): ours, or one left by a moved tracker folder."""
+    current = envvars._split(HOOK_TOKEN)
+
+    def match(tokens, i):
+        token = tokens[i]
+        if token == "--require" and i + 1 < len(tokens):
+            run = 2
+        elif token.startswith("--require="):
+            run = 1
+        else:
+            return 0
+        path = (tokens[i + 1] if run == 2 else token.split("=", 1)[1]).strip('"').replace("\\", "/").lower()
+        if not (path == "node_hook.js" or path.endswith("/node_hook.js")):
+            return 0
+        if keep_current and tokens[i:i + run] == current:
+            return 0
+        return run
+    return match
+
+
 class JavaScriptPack(LanguagePack):
     key = "javascript"
     label = "JavaScript"
@@ -41,11 +62,13 @@ class JavaScriptPack(LanguagePack):
         if not ok:
             envvars.user_env_remove("NODE_OPTIONS", HOOK_TOKEN)
             return False, f"Node hook not installed: {message}"
+        # A hook left by a moved tracker folder would break every Node program: drop it first.
+        envvars.user_env_remove_matching("NODE_OPTIONS", _tracker_hook_matcher(keep_current=True))
         envvars.user_env_add("NODE_OPTIONS", HOOK_TOKEN)
         return True, "Node hook installed"
 
     def uninstall(self):
-        removed = envvars.user_env_remove("NODE_OPTIONS", HOOK_TOKEN)
+        removed = envvars.user_env_remove_matching("NODE_OPTIONS", _tracker_hook_matcher(keep_current=False))
         return "Node hook removed" if removed else "Node hook was not set"
 
     def self_test(self, lang_config, data_dir=None):
