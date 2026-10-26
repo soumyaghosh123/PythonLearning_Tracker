@@ -187,6 +187,24 @@ class JsAnalyzerTests(unittest.TestCase):
         self.assertNotIn("es_modules", topics("const m = await import('./x.js');\nconst e = 'export const';"))
         self.assertIn("require", topics("const p = require(\"path\");"))
 
+    def test_try_catch_ignores_promise_catch(self):
+        self.assertNotIn("try_catch", topics("x.then(r => r).catch(e => log(e));"))
+        self.assertNotIn("try_catch", topics("p.catch(console.error);"))
+        self.assertNotIn("try_catch", topics(read("l7_async.js")))
+        self.assertIn("try_catch", topics("try { f(); } catch (e) { g(); }"))
+        self.assertIn("try_catch", topics("try { f(); } catch { g(); }"))
+
+    def test_operators_common_beginner_forms(self):
+        for src in ('const t = "Total: " + total;', 'const s = "a" + "b";', "n += 1;", "i++;",
+                    "i--;", "if (a < b) {}", "if (a > b) {}", "const x = a ** 2;", "const y = a - b;"):
+            self.assertIn("operators", topics(src), src)
+        self.assertNotIn("operators", topics("const f = () => 1;"))
+
+    def test_strict_ternary_branches_may_contain_dots(self):
+        self.assertIn("strict_ternary", topics('const a = x === 1 ? user.name : "x";'))
+        self.assertIn("strict_ternary", topics("const a = a === b ? 1.5 : 2;"))
+        self.assertNotIn("strict_ternary", topics("a === b; const n = obj?.x ?? 0;"))
+
 
 if __name__ == "__main__":
     unittest.main()

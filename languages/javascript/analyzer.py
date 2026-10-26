@@ -112,7 +112,7 @@ def _has_scope(c):
 
 
 def _strict_ternary(c):
-    return bool(re.search(r"===|!==", c.code)) and bool(re.search(r"\?[^?.:]+:", c.code))
+    return bool(re.search(r"===|!==", c.code)) and bool(re.search(r"(?<!\?)\?(?![.?])[^?:]+:", c.code))
 
 
 _DEFAULT_PARAM = [
@@ -182,7 +182,8 @@ TOPIC_RULES = {
                            r"replace|includes|indexOf|charAt|padStart)\s*\(",
                            r"\b(?:Number|parseInt|parseFloat|String)\s*\("),
     "template_literals": lambda c: c.has_template,
-    "operators": _rx(r"[\w$)\]]\s*(?:\*\*|[-+*/%])\s*[\w$(]", r"[=!]==?|<=|>=|&&|\|\|"),
+    "operators": _rx(r"[\w$)\]\"]\s*(?:\*\*|[-+*/%])\s*[\w$(\"]", r"[\w$)\]]\s*[-+*/%]=(?!=)",
+                     r"\+\+|--", r"(?<![=<>])[<>](?![=<>])", r"[=!]==?|<=|>=|&&|\|\|"),
     "comments": lambda c: c.has_comment,
     "if_else": _rx(r"\bif\s*\("),
     "switch": _rx(r"\bswitch\s*\("),
@@ -208,7 +209,7 @@ TOPIC_RULES = {
                           r"\.\s*on(?:click|submit|input|change|keydown|keyup|load|mouse\w+)\s*=(?!=)"),
     "create_element": _rx(r"\.\s*(?:createElement|createTextNode|createDocumentFragment|insertAdjacentHTML)\s*\("),
     "forms": _forms,
-    "try_catch": _rx(r"\bcatch\s*[({]"),
+    "try_catch": _rx(r"(?<![\w$.])catch\s*[({]"),
     "throw": _rx(r"\bthrow\s+[\w$(\"]"),
     "json": _rx(r"\bJSON\s*\.\s*(?:parse|stringify)\s*\("),
     "es_modules": _rx(r"^\s*import\s+(?:[\w$*{][^;()]*\bfrom\s*\"\"|\"\")",
