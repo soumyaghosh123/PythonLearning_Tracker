@@ -1,0 +1,515 @@
+{
+  "language": "java",
+  "editor": "Eclipse",
+  "extensions": [
+    ".java"
+  ],
+  "plans": {
+    "standard": {
+      "label": "Standard",
+      "icon": "📘",
+      "daily_effort": "30–45 min a day",
+      "daily_runs_target": 2,
+      "weekly_lines_target": 150,
+      "streak_target_days": 30,
+      "description": "Steady pace for people learning alongside work or studies."
+    },
+    "aggressive": {
+      "label": "Aggressive",
+      "icon": "🚀",
+      "daily_effort": "1.5–2 hours a day",
+      "daily_runs_target": 5,
+      "weekly_lines_target": 400,
+      "streak_target_days": 30,
+      "description": "Fast track in about half the time. Alerts fire sooner."
+    }
+  },
+  "levels": [
+    {
+      "id": 1,
+      "name": "Java Basics",
+      "tier": "Beginner",
+      "days": {
+        "standard": 7,
+        "aggressive": 3
+      },
+      "project": "Temperature converter: read Celsius and print Fahrenheit.",
+      "links": [
+        {
+          "title": "Dev.java: Learn Java",
+          "url": "https://dev.java/learn/"
+        },
+        {
+          "title": "W3Schools: Java Syntax",
+          "url": "https://www.w3schools.com/java/java_syntax.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "main_method",
+          "name": "class with main()",
+          "link": "https://www.w3schools.com/java/java_getstarted.asp",
+          "try": "Write a class with public static void main and run it."
+        },
+        {
+          "id": "println",
+          "name": "System.out.println",
+          "link": "https://www.w3schools.com/java/java_syntax.asp",
+          "try": "Print two lines with System.out.println."
+        },
+        {
+          "id": "primitives",
+          "name": "primitive variables",
+          "link": "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html",
+          "try": "Declare an int, a double and a boolean and print them."
+        },
+        {
+          "id": "strings",
+          "name": "String",
+          "link": "https://www.w3schools.com/java/java_strings.asp",
+          "try": "Store your name in a String and print it."
+        },
+        {
+          "id": "scanner",
+          "name": "Scanner input",
+          "link": "https://www.w3schools.com/java/java_user_input.asp",
+          "try": "Read a name with Scanner and greet the user."
+        },
+        {
+          "id": "operators",
+          "name": "operators",
+          "link": "https://www.w3schools.com/java/java_operators.asp",
+          "try": "Add two ints, then compare them with >."
+        },
+        {
+          "id": "comments",
+          "name": "comments",
+          "link": "https://www.w3schools.com/java/java_comments.asp",
+          "try": "Explain a line of code with a // comment."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Control Flow",
+      "tier": "Beginner",
+      "days": {
+        "standard": 10,
+        "aggressive": 5
+      },
+      "project": "Number guessing game with a limited number of tries.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Control Flow Statements",
+          "url": "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/flow.html"
+        },
+        {
+          "title": "W3Schools: Java Conditions",
+          "url": "https://www.w3schools.com/java/java_conditions.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "if_else",
+          "name": "if / else",
+          "link": "https://www.w3schools.com/java/java_conditions.asp",
+          "try": "Print whether a number is positive, negative or zero."
+        },
+        {
+          "id": "switch",
+          "name": "switch",
+          "link": "https://www.w3schools.com/java/java_switch.asp",
+          "try": "Print a day name from a number with a switch."
+        },
+        {
+          "id": "for_loop",
+          "name": "for loop",
+          "link": "https://www.w3schools.com/java/java_for_loop.asp",
+          "try": "Print the numbers 1 to 10 with a for loop."
+        },
+        {
+          "id": "while_loop",
+          "name": "while and do-while",
+          "link": "https://www.w3schools.com/java/java_while_loop.asp",
+          "try": "Keep asking for a number with a while loop until the user enters 0."
+        },
+        {
+          "id": "break_continue",
+          "name": "break and continue",
+          "link": "https://www.w3schools.com/java/java_break.asp",
+          "try": "Skip even numbers with continue and stop at 20 with break."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Arrays & Strings",
+      "tier": "Beginner",
+      "days": {
+        "standard": 12,
+        "aggressive": 6
+      },
+      "project": "Word counter: count the words and vowels in a sentence.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Arrays",
+          "url": "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/arrays.html"
+        },
+        {
+          "title": "W3Schools: Java Arrays",
+          "url": "https://www.w3schools.com/java/java_arrays.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "arrays",
+          "name": "arrays",
+          "link": "https://www.w3schools.com/java/java_arrays.asp",
+          "try": "Store five scores in an int[] and print the third."
+        },
+        {
+          "id": "enhanced_for",
+          "name": "enhanced for loop",
+          "link": "https://www.w3schools.com/java/java_arrays_loop.asp",
+          "try": "Sum an array with for (int x : numbers)."
+        },
+        {
+          "id": "arrays_2d",
+          "name": "2D arrays",
+          "link": "https://www.w3schools.com/java/java_arrays_multi.asp",
+          "try": "Build a 3x3 grid with int[][] and print it."
+        },
+        {
+          "id": "string_methods",
+          "name": "String methods",
+          "link": "https://docs.oracle.com/javase/tutorial/java/data/strings.html",
+          "try": "Use length(), toUpperCase() and charAt() on a word."
+        },
+        {
+          "id": "string_builder",
+          "name": "StringBuilder",
+          "link": "https://docs.oracle.com/javase/tutorial/java/data/buffers.html",
+          "try": "Build a string in a loop with StringBuilder.append."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Methods",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 12,
+        "aggressive": 6
+      },
+      "project": "Calculator with a separate method for each operation.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Defining Methods",
+          "url": "https://docs.oracle.com/javase/tutorial/java/javaOO/methods.html"
+        },
+        {
+          "title": "W3Schools: Java Methods",
+          "url": "https://www.w3schools.com/java/java_methods.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "static_methods",
+          "name": "static methods",
+          "link": "https://www.w3schools.com/java/java_methods.asp",
+          "try": "Write a static method greet() and call it from main."
+        },
+        {
+          "id": "params_return",
+          "name": "parameters and return",
+          "link": "https://www.w3schools.com/java/java_methods_param.asp",
+          "try": "Write int add(int a, int b) and print its result."
+        },
+        {
+          "id": "overloading",
+          "name": "method overloading",
+          "link": "https://www.w3schools.com/java/java_method_overloading.asp",
+          "try": "Write two add methods, one for ints and one for doubles."
+        },
+        {
+          "id": "recursion",
+          "name": "recursion",
+          "link": "https://www.w3schools.com/java/java_recursion.asp",
+          "try": "Compute a factorial with a method that calls itself."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Classes & Objects",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 14,
+        "aggressive": 7
+      },
+      "project": "Bank account class with deposit and withdraw that refuses overdrafts.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Classes and Objects",
+          "url": "https://docs.oracle.com/javase/tutorial/java/javaOO/index.html"
+        },
+        {
+          "title": "W3Schools: Java Classes",
+          "url": "https://www.w3schools.com/java/java_classes.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "class_new",
+          "name": "class and new",
+          "link": "https://www.w3schools.com/java/java_classes.asp",
+          "try": "Create a Dog class and make an object with new Dog()."
+        },
+        {
+          "id": "constructors",
+          "name": "constructors",
+          "link": "https://www.w3schools.com/java/java_constructors.asp",
+          "try": "Add a constructor that sets the dog's name."
+        },
+        {
+          "id": "this_keyword",
+          "name": "this keyword",
+          "link": "https://docs.oracle.com/javase/tutorial/java/javaOO/thiskey.html",
+          "try": "Use this.name = name inside a constructor."
+        },
+        {
+          "id": "encapsulation",
+          "name": "private fields with getters",
+          "link": "https://www.w3schools.com/java/java_encapsulation.asp",
+          "try": "Make a field private and add getName() and setName()."
+        },
+        {
+          "id": "static_members",
+          "name": "static members",
+          "link": "https://docs.oracle.com/javase/tutorial/java/javaOO/classvars.html",
+          "try": "Count created objects with a static counter."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Inheritance & Interfaces",
+      "tier": "Intermediate",
+      "days": {
+        "standard": 14,
+        "aggressive": 7
+      },
+      "project": "Shapes program: Circle and Rectangle share an interface and report their area.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Interfaces and Inheritance",
+          "url": "https://docs.oracle.com/javase/tutorial/java/IandI/index.html"
+        },
+        {
+          "title": "W3Schools: Java Inheritance",
+          "url": "https://www.w3schools.com/java/java_inheritance.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "extends",
+          "name": "extends",
+          "link": "https://www.w3schools.com/java/java_inheritance.asp",
+          "try": "Make Dog extend Animal and call an inherited method."
+        },
+        {
+          "id": "super_call",
+          "name": "super",
+          "link": "https://docs.oracle.com/javase/tutorial/java/IandI/super.html",
+          "try": "Call super(name) in a subclass constructor."
+        },
+        {
+          "id": "override",
+          "name": "@Override",
+          "link": "https://docs.oracle.com/javase/tutorial/java/IandI/override.html",
+          "try": "Override speak() in a subclass with @Override."
+        },
+        {
+          "id": "abstract_class",
+          "name": "abstract classes",
+          "link": "https://www.w3schools.com/java/java_abstract.asp",
+          "try": "Declare an abstract class with an abstract method."
+        },
+        {
+          "id": "interfaces",
+          "name": "interfaces",
+          "link": "https://www.w3schools.com/java/java_interface.asp",
+          "try": "Write an interface and implement it in two classes."
+        },
+        {
+          "id": "polymorphism",
+          "name": "polymorphism",
+          "link": "https://www.w3schools.com/java/java_polymorphism.asp",
+          "try": "Store a Dog in an Animal variable and call speak()."
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Exceptions & Files",
+      "tier": "Advanced",
+      "days": {
+        "standard": 14,
+        "aggressive": 7
+      },
+      "project": "Notes app that saves notes to a file and reads them back.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Exceptions",
+          "url": "https://docs.oracle.com/javase/tutorial/essential/exceptions/index.html"
+        },
+        {
+          "title": "W3Schools: Java Files",
+          "url": "https://www.w3schools.com/java/java_files.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "try_catch",
+          "name": "try / catch / finally",
+          "link": "https://www.w3schools.com/java/java_try_catch.asp",
+          "try": "Catch an ArithmeticException from dividing by zero."
+        },
+        {
+          "id": "throw_throws",
+          "name": "throw and throws",
+          "link": "https://docs.oracle.com/javase/tutorial/essential/exceptions/throwing.html",
+          "try": "Throw an IllegalArgumentException for a negative age."
+        },
+        {
+          "id": "custom_exception",
+          "name": "custom exception",
+          "link": "https://docs.oracle.com/javase/tutorial/essential/exceptions/index.html",
+          "try": "Write class MyException extends Exception and throw it."
+        },
+        {
+          "id": "try_with_resources",
+          "name": "try-with-resources",
+          "link": "https://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html",
+          "try": "Open a reader inside try ( ... ) so it closes itself."
+        },
+        {
+          "id": "read_file",
+          "name": "reading files",
+          "link": "https://www.w3schools.com/java/java_files_read.asp",
+          "try": "Print every line of a text file with BufferedReader."
+        },
+        {
+          "id": "write_file",
+          "name": "writing files",
+          "link": "https://www.w3schools.com/java/java_files_create.asp",
+          "try": "Write two lines to a file with FileWriter."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Collections & Generics",
+      "tier": "Advanced",
+      "days": {
+        "standard": 21,
+        "aggressive": 10
+      },
+      "project": "Contact book that stores names and phone numbers in a HashMap.",
+      "links": [
+        {
+          "title": "Oracle tutorial: Collections",
+          "url": "https://docs.oracle.com/javase/tutorial/collections/index.html"
+        },
+        {
+          "title": "W3Schools: Java ArrayList",
+          "url": "https://www.w3schools.com/java/java_arraylist.asp"
+        }
+      ],
+      "topics": [
+        {
+          "id": "array_list",
+          "name": "ArrayList",
+          "link": "https://www.w3schools.com/java/java_arraylist.asp",
+          "try": "Add three names to an ArrayList and print its size."
+        },
+        {
+          "id": "hash_map",
+          "name": "HashMap",
+          "link": "https://www.w3schools.com/java/java_hashmap.asp",
+          "try": "Map three names to ages with a HashMap and look one up."
+        },
+        {
+          "id": "hash_set",
+          "name": "HashSet",
+          "link": "https://www.w3schools.com/java/java_hashset.asp",
+          "try": "Add duplicate values to a HashSet and see them disappear."
+        },
+        {
+          "id": "generics",
+          "name": "generics",
+          "link": "https://docs.oracle.com/javase/tutorial/java/generics/index.html",
+          "try": "Write a class Box<T> that holds any type."
+        },
+        {
+          "id": "comparator",
+          "name": "Comparator and Comparable",
+          "link": "https://docs.oracle.com/javase/tutorial/collections/interfaces/order.html",
+          "try": "Sort a list of names by length with a Comparator."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Modern Java & Projects",
+      "tier": "Advanced",
+      "days": {
+        "standard": 28,
+        "aggressive": 14
+      },
+      "project": "Student grade manager with streams, an enum for grades and unit tests.",
+      "links": [
+        {
+          "title": "Dev.java: Learn Java",
+          "url": "https://dev.java/learn/"
+        },
+        {
+          "title": "Oracle tutorial: Lambda Expressions",
+          "url": "https://docs.oracle.com/javase/tutorial/java/javaOO/lambdaexpressions.html"
+        }
+      ],
+      "topics": [
+        {
+          "id": "lambdas",
+          "name": "lambdas",
+          "link": "https://www.w3schools.com/java/java_lambda.asp",
+          "try": "Pass x -> x * 2 to a method that takes a function."
+        },
+        {
+          "id": "streams",
+          "name": "streams",
+          "link": "https://docs.oracle.com/javase/tutorial/collections/streams/index.html",
+          "try": "Filter a list of numbers with stream().filter(...).collect(...)."
+        },
+        {
+          "id": "enums_records",
+          "name": "enums and records",
+          "link": "https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html",
+          "try": "Declare an enum for days and a record Point(int x, int y)."
+        },
+        {
+          "id": "packages",
+          "name": "packages and imports",
+          "link": "https://docs.oracle.com/javase/tutorial/java/package/index.html",
+          "try": "Put a class in a package and import it from another."
+        },
+        {
+          "id": "junit",
+          "name": "JUnit tests",
+          "link": "https://junit.org/junit5/docs/current/user-guide/#writing-tests",
+          "try": "Write a @Test method that asserts add(2, 3) == 5."
+        }
+      ]
+    }
+  ]
+}
