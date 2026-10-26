@@ -3,9 +3,9 @@
 Each time it:
   1. refreshes dashboard.html
   2. sends the progress email if today is one of your send_days
-  3. sends a stuck alert if the current level is past its due date
-     (then a reminder every `reminder_every_days`)
-  4. sends a nudge if you haven't run any Python for `inactive_after_days`
+  3. sends one stuck alert covering every language whose current level is past its due date
+     (then a reminder every `reminder_every_days`, tracked per language)
+  4. sends one nudge covering every language with no runs for `inactive_after_days`
 
 Manual options:
   python tracker\\send_report.py              # do the daily check now
@@ -21,7 +21,7 @@ import webbrowser
 
 from dashboard import write_dashboard, write_plan
 from emailer import inactive_email, progress_email, send_email, stuck_email
-from settings import DATA_DIR, EMAIL_STATE_PATH, load_config, load_curriculum, load_json, log_line, save_json
+from settings import DATA_DIR, EMAIL_STATE_PATH, load_config, load_json, log_line, save_json
 from track import build_report
 
 LOG_PATH = DATA_DIR / "send_report.log"
@@ -35,43 +35,63 @@ def days_since(iso_date, today):
     return (today - dt.date.fromisoformat(iso_date[:10])).days if iso_date else None
 
 
+def language_state(state, key):
+    entry = state.setdefault("languages", {}).setdefault(key, {})
+    entry.setdefault("alerts", {})
+    entry.setdefault("last_inactive_sent", None)
+    return entry
+
+
 def main():
     preview = "--preview" in sys.argv
     send_now = "--send-now" in sys.argv
 
     config = load_config()
-    curriculum = load_curriculum()
-    report = build_report(config, curriculum)
-    write_plan(config, curriculum)
+    report = build_report(config)
+    write_plan(config)
     write_dashboard(report)
 
     today = dt.date.fromisoformat(report["today"])
-    state = load_json(EMAIL_STATE_PATH, {"last_progress_sent": None, "alerts": {}, "last_inactive_sent": None})
+    state = load_json(EMAIL_STATE_PATH, None)
+    if not isinstance(state, dict):
+        state = {}
+    state.setdefault("last_progress_sent", None)
     alerts = config["alerts"]
-    started = report["day_number"] >= 1
-    cur = report["current_level"]
     emails = []  # (kind, subject, html, text)
+    # Languages whose report could not be built are skipped for alerts.
+    reports = [(k, report["languages"][k]) for k in report["enabled"]
+               if k in report["languages"] and "error" not in report["languages"][k]]
 
-    # 1. Progress report on the chosen days
+    # 1. One progress report on the chosen days
     last = state.get("last_progress_sent")
     is_send_day = today.strftime("%A") in config["email"]["send_days"]
     if send_now or preview or (is_send_day and days_since(last, today) != 0):
         since = dt.datetime.fromisoformat(last) if last else None
         emails.append(("progress",) + progress_email(report, since))
 
-    # 2. Stuck alert, then reminders
-    if cur and cur["status"] == "overdue" and (alerts["stuck_enabled"] or preview):
-        last_alert = state["alerts"].get(str(cur["id"]))
-        gap = days_since(last_alert, today)
-        if preview or gap is None or gap >= alerts["reminder_every_days"]:
-            emails.append(("stuck",) + stuck_email(report, reminder=last_alert is not None))
+    # 2. Stuck alerts, then reminders: each language has its own due dates and timing
+    stuck = []
+    if alerts["stuck_enabled"] or preview:
+        for key, rep in reports:
+            cur = rep["current_level"]
+            if cur and cur["status"] == "overdue":
+                last_alert = language_state(state, key)["alerts"].get(str(cur["id"]))
+                gap = days_since(last_alert, today)
+                if preview or gap is None or gap >= alerts["reminder_every_days"]:
+                    stuck.append((key, rep, last_alert is not None))
+    if stuck:
+        emails.append(("stuck",) + stuck_email([(rep, reminder) for _, rep, reminder in stuck]))
 
-    # 3. Inactivity nudge
+    # 3. Inactivity nudges, combined into one email
     limit = alerts["inactive_after_days"]
-    if started and cur and limit and report["stats"]["days_inactive"] >= limit:
-        gap = days_since(state.get("last_inactive_sent"), today)
-        if preview or gap is None or gap >= limit:
-            emails.append(("inactive",) + inactive_email(report))
+    inactive = []
+    for key, rep in reports:
+        if rep["day_number"] >= 1 and rep["current_level"] and limit and rep["stats"]["days_inactive"] >= limit:
+            gap = days_since(language_state(state, key)["last_inactive_sent"], today)
+            if preview or gap is None or gap >= limit:
+                inactive.append((key, rep))
+    if inactive:
+        emails.append(("inactive",) + inactive_email([rep for _, rep in inactive]))
 
     if preview:
         for kind, subject, html_body, _ in emails:
@@ -99,9 +119,11 @@ def main():
         if kind == "progress":
             state["last_progress_sent"] = dt.datetime.now().isoformat(timespec="seconds")
         elif kind == "stuck":
-            state["alerts"][str(cur["id"])] = today.isoformat()
+            for key, rep, _ in stuck:
+                language_state(state, key)["alerts"][str(rep["current_level"]["id"])] = today.isoformat()
         elif kind == "inactive":
-            state["last_inactive_sent"] = today.isoformat()
+            for key, _ in inactive:
+                language_state(state, key)["last_inactive_sent"] = today.isoformat()
     save_json(EMAIL_STATE_PATH, state)
     if not emails:
         log("Dashboard updated. No emails due today.")
