@@ -22,6 +22,8 @@ def _split(value):
             current.append(ch)
     if current:
         tokens.append("".join(current))
+    if in_quotes:
+        raise ValueError("unterminated quote")
     return tokens
 
 
@@ -35,14 +37,22 @@ def _find(tokens, want):
 
 
 def add_token(value, token):
-    tokens = _split(value)
+    try:
+        tokens = _split(value)
+    except ValueError:
+        return value  # never guess inside a user's broken value
     if _find(tokens, _split(token)) >= 0:
         return value
     return " ".join(tokens + [token])
 
 
 def remove_token(value, token):
-    tokens, want = _split(value), _split(token)
+    try:
+        tokens, want = _split(value), _split(token)
+    except ValueError:
+        return value or ""
+    if _find(tokens, want) < 0:
+        return value or ""  # nothing of ours: leave the user's spacing alone
     while want:
         i = _find(tokens, want)
         if i < 0:

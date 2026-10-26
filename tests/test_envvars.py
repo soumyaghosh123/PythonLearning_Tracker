@@ -30,6 +30,23 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(remove_token("-Xmx1g " + tok, tok), "-Xmx1g")
         self.assertEqual(add_token(tok, tok), tok)
 
+    def test_unbalanced_quote_leaves_value_unchanged(self):
+        bad = '-Dfoo="bar -Xmx1g'
+        self.assertEqual(add_token(bad, NODE), bad)
+        self.assertEqual(remove_token(bad, NODE), bad)
+        self.assertEqual(remove_token(bad + " " + NODE, NODE), bad + " " + NODE)
+
+    def test_remove_absent_token_keeps_whitespace(self):
+        self.assertEqual(remove_token('-Xmx1g  -Dy=2', 'zzz'), '-Xmx1g  -Dy=2')
+
+    def test_backslashes_preserved(self):
+        opt = r'-Djava.io.tmpdir=C:\Temp -Xmx1g'
+        self.assertEqual(add_token(opt, NODE), opt + " " + NODE)
+
+    def test_every_duplicate_removed_others_intact(self):
+        value = "-A " + NODE + " -B " + NODE + " -C"
+        self.assertEqual(remove_token(value, NODE), "-A -B -C")
+
     def test_partial_match_not_removed(self):
         self.assertEqual(remove_token("--require x", "--require"), "x")
 
