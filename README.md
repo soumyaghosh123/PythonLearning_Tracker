@@ -463,7 +463,7 @@ Every step of every hook is wrapped so it can never break your programs.
 | **Nothing is logged at all (Python)** | Check the logger file exists (see above). If you use a **virtual environment** or a **new Python version**, user site-packages may be off or different; re-run setup with that Python. |
 | **Java run not logged** | Restart Eclipse (it only reads the setting at startup). In a new terminal run `echo %JAVA_TOOL_OPTIONS%`; it should contain `tracker-agent.jar`. Check the folder isn't excluded (built-in exclusions or `exclude_folders`). Without a JDK only Eclipse builds are seen: install one and re-run setup. |
 | **"Picked up JAVA_TOOL_OPTIONS: ..." appears in the console** | Expected. The Java runtime prints it once for every Java program when the tracker's agent is installed. It's harmless. |
-| **Node run not logged** | Restart VS Code. In a new terminal run `echo %NODE_OPTIONS%`; it should contain `node_hook.js`. Check the script is inside the JavaScript `code_folder`. |
+| **Node run not logged** | Restart VS Code. In a new terminal run `echo %NODE_OPTIONS%` (Command Prompt) or `$env:NODE_OPTIONS` (PowerShell); it should contain `node_hook.js`. Check the script is inside the JavaScript `code_folder`. If it's still blank in VS Code terminals, see [`NODE_OPTIONS` is blank in the VS Code terminal](#node_options-is-blank-in-the-vs-code-terminal). |
 | **A work folder shows in "Java sources found in"** | Add that folder to `languages.java.exclude_folders` in `config.json`. On the next refresh it disappears and its past entries and snapshots are removed. |
 | **Every `node` program fails with `Cannot find module ... node_hook.js`** | The tracker folder was moved or deleted while its hook was still installed. Remove the tracker part (`--require ...node_hook.js`) from `NODE_OPTIONS`: Windows **Settings → System → About → Advanced system settings → Environment Variables**, under *User variables*. Or put the tracker folder back where it was and run `python tracker\setup.py --uninstall`. (Re-running `setup.py` from the tracker's current folder also replaces an old tracker entry with the right one.) |
 | **Every Java program fails with `Error occurred during initialization of VM` or `agent library failed to init`** | Same cause. Remove the tracker part (`-javaagent:...tracker-agent.jar`) from `JAVA_TOOL_OPTIONS` in the same Environment Variables window. Or put the tracker folder back where it was and run `python tracker\setup.py --uninstall`. (Re-running `setup.py` from the tracker's current folder also replaces an old tracker entry with the right one.) |
@@ -475,6 +475,32 @@ Every step of every hook is wrapped so it can never break your programs.
 | **A language's tab says "Couldn't read ... data"** | See the error in `data\send_report.log`. The other languages are not affected. |
 | **Charts are empty** | Chart.js needs internet access the first time the page loads. |
 | **Want to restart a language's plan** | Set a new `start_date` for it in `config.json` (earlier activity is then ignored) and refresh. |
+
+### `NODE_OPTIONS` is blank in the VS Code terminal
+
+Setup stores `NODE_OPTIONS` in your Windows user settings, but a VS Code terminal can still show it blank: VS Code may have been started before setup ran, or your VS Code settings may override it (for example with `"NODE_OPTIONS": ""`). You can set it for VS Code terminals directly:
+
+1. In VS Code, press **Ctrl+Shift+P**, type **Open User Settings (JSON)** and press **Enter**.
+2. Add this inside the outer `{ }`, keeping the commas valid. Replace the path with the full path to `node_hook.js` in **your** tracker folder, using forward slashes:
+
+   ```json
+   "terminal.integrated.env.windows": {
+       "NODE_OPTIONS": "--require \"C:/Python/tracker/languages/javascript/node_hook.js\""
+   },
+   ```
+
+   If the file already has a `"terminal.integrated.env.windows"` section, put only the `"NODE_OPTIONS": ...` line inside it. If that section already has `"NODE_OPTIONS": ""`, that is why it was blank: replace that line.
+3. Save with **Ctrl+S**.
+4. Close all terminals (trash-can icon), then open **Terminal → New Terminal**.
+5. Check it in PowerShell:
+
+   ```powershell
+   $env:NODE_OPTIONS
+   ```
+
+   It should print the `--require ".../node_hook.js"` path.
+
+If you later move the tracker folder or uninstall it, remove this line from your VS Code settings too, otherwise every `node` program run in a VS Code terminal fails with `Cannot find module ... node_hook.js`.
 
 ---
 
